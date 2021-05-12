@@ -1,0 +1,15 @@
+Save file version 0.9.0
+
+INPUTS
+
+Initial altitude: 432000.0 m
+Initial tangential velocity: 7651.0 m/s
+Initial radial velocity: 0.0 m/s
+Body mass: 5.972e+24 kg
+Body radius: 6371000.0 m
+Time increment: 1.0 s
+
+This is a save file for quick testing.
+It should ROUGHLY look like the orbit
+of the International Space Station around
+planet Earth.
