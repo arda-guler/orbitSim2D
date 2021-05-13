@@ -1,6 +1,6 @@
 #   N-BODY ORBIT SIMULATOR
 
-version = "0.1.0"
+version = "0.1.0 Pre-Alpha"
 
 from dearpygui.core import *
 from dearpygui.simple import *
