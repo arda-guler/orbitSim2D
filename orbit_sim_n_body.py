@@ -1,6 +1,6 @@
 #   N-BODY ORBIT SIMULATOR
 
-version = "0.2.0"
+version = "0.2.1"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -459,8 +459,8 @@ def simulateOrbit():
                          moon.get_vel_rad() * math.sin(math.radians(moon.get_long() + 90)) + moon.get_vel_tgn() * math.sin(math.radians(moon.get_long() + 180)))
 
     # initiate vessel
-    vessel_a.set_pos(sph2cart(vessel_a.get_alt() + vessel_a.get_orbiting().get_radius(), vessel_a.get_long())[0],
-                   sph2cart(vessel_a.get_alt() + vessel_a.get_orbiting().get_radius(), vessel_a.get_long())[1])
+    vessel_a.set_pos(sph2cart(vessel_a.get_alt() + vessel_a.get_orbiting().get_radius(), vessel_a.get_long())[0] + vessel_a.get_orbiting().get_pos()[0],
+                   sph2cart(vessel_a.get_alt() + vessel_a.get_orbiting().get_radius(), vessel_a.get_long())[1]+ vessel_a.get_orbiting().get_pos()[1])
 
     vessel_a.set_vel(vessel_a.get_vel_rad() * math.cos(math.radians(vessel_a.get_long() + 90)) + vessel_a.get_vel_tgn() * math.cos(math.radians(vessel_a.get_long() + 180)) + vessel_a.get_orbiting().get_vel()[0],
                      vessel_a.get_vel_rad() * math.sin(math.radians(vessel_a.get_long() + 90)) + vessel_a.get_vel_tgn() * math.sin(math.radians(vessel_a.get_long() + 180)) + vessel_a.get_orbiting().get_vel()[1])
