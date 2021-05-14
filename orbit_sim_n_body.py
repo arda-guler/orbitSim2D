@@ -1,6 +1,6 @@
 #   N-BODY ORBIT SIMULATOR
 
-version = "0.1.0 Pre-Alpha"
+version = "0.2.0"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -187,62 +187,205 @@ def enableEndFlag():
 
 def simulateOrbit():
 
+    class body:
+
+        def __init__(self):
+            self.mass = 0
+            self.radius = 0
+            self.pos_x = 0
+            self.pos_y = 0
+            self.vel_x = 0
+            self.vel_y = 0
+            self_alt = 0
+            self.vel_tgn = 0
+            self.vel_rad = 0
+            self.long = 0
+            exists = False
+
+        def set_pos (self, x, y):
+            self.pos_x = x
+            self.pos_y = y
+
+        def get_pos (self):
+            return self.pos_x, self.pos_y
+
+        def set_vel (self, x, y):
+            self.vel_x = x
+            self.vel_y = y
+
+        def get_vel (self):
+            return self.vel_x, self.vel_y
+
+        def update_pos (self, vel_x, vel_y, timescale):
+            self.pos_x = self.pos_x + vel_x * timescale
+            self.pos_y = self.pos_y + vel_y * timescale
+
+        def update_vel (self,accel_x, accel_y, timescale):
+            self.vel_x = self.vel_x + accel_x * timescale
+            self.vel_y = self.vel_y + accel_y * timescale
+
+        def set_radius (self,r):
+            self.radius = r
+
+        def set_mass (self, m):
+            self.mass = m
+
+        def set_exists (self, existence):
+            self.exists = existence
+
+        def set_alt (self, altitude):
+            self.alt = altitude
+
+        def get_alt (self):
+            return self.alt
+
+        def set_long (self, longitude):
+            self.long = longitude
+
+        def get_long (self):
+            return self.long
+
+        def set_vel_tgn (self, velocity):
+            self.vel_tgn = velocity
+
+        def get_vel_tgn (self):
+            return self.vel_tgn
+
+        def set_vel_rad (self, velocity):
+            self.vel_rad = velocity
+
+        def get_vel_rad (self):
+            return self.vel_rad
+
+        def does_exist (self):
+            return self.exists
+
+        def get_radius (self):
+            return self.radius
+
+        def get_mass (self):
+            return self.mass
+
+        def get_grav_pull (self, dist):
+            return (grav_const * self.mass) / (dist**2)
+
+    class vessel ():
+
+        def __init__(self):
+            self.pos_x = 0
+            self.pos_y = 0
+            self.vel_y = 0
+            self.vel_x = 0
+            self.orbiting = None
+
+        def does_exist (self):
+            return True
+
+        def set_pos (self, x, y):
+            self.pos_x = x
+            self.pos_y = y
+
+        def get_pos (self):
+            return self.pos_x, self.pos_y
+
+        def set_vel (self, x, y):
+            self.vel_x = x
+            self.vel_y = y
+
+        def get_vel (self):
+            return self.vel_x, self.vel_y
+
+        def update_pos (self, vel_x, vel_y, timescale):
+            self.pos_x = self.pos_x + vel_x * timescale
+            self.pos_y = self.pos_y + vel_y * timescale
+
+        def update_vel (self, accel_x, accel_y, timescale):
+            self.vel_x = self.vel_x + accel_x * timescale
+            self.vel_y = self.vel_y + accel_y * timescale
+
+        def set_alt (self, altitude):
+            self.alt = altitude
+
+        def get_alt (self):
+            return self.alt
+
+        def set_long (self, longitude):
+            self.long = longitude
+
+        def get_long (self):
+            return self.long
+
+        def set_vel_tgn (self, velocity):
+            self.vel_tgn = velocity
+
+        def get_vel_tgn (self):
+            return self.vel_tgn
+
+        def set_vel_rad (self, velocity):
+            self.vel_rad = velocity
+
+        def get_vel_rad (self):
+            return self.vel_rad
+
+        def set_orbiting (self, body):
+            self.orbiting = body
+
+        def get_orbiting (self):
+            return self.orbiting
+
     global calc_run_number
     calc_run_number += 1
     log_info(message = "Run [" + str(calc_run_number) + "]: Simulating trajectory...", logger = "Logs")
 
-    # get input values from entry fields
-
-    drag_enabled = get_value("drag_model_checkbox")
+    # set vessel values
+    vessel_a = vessel()
+    vessel_a.set_alt(float(get_value("alt_init_field")))
+    vessel_a.set_vel_tgn(float(get_value("vel_tgn_init_field")))
+    vessel_a.set_vel_rad(float(get_value("vel_rad_init_field")))
+    vessel_a.set_long(float(get_value("long_init_field")))
     
- ##   try:
-    # parent body
-    parent_body_mass = float(get_value("body_mass_field")) * 10**float((get_value("body_mass_magnitude_field")))
-    parent_body_radius = float(get_value("body_radius_field")) * 10**float((get_value("body_radius_magnitude_field")))
+    # create bodies
+    body_a = body()
+    body_b = body()
+    body_c = body()
 
-    # vessel
-    init_orbiting_body = int(get_value("init_orbiting_body_field"))
-    alt_init = float(get_value("alt_init_field"))
-    vel_tgn_init = float(get_value("vel_tgn_init_field"))
-    vel_rad_init = float(get_value("vel_rad_init_field"))
-    long_init = float(get_value("long_init_field"))
+    # create parent body
+    body_a.set_exists(True)
+    body_a.set_mass(float(get_value("body_mass_field")) * 10**float((get_value("body_mass_magnitude_field"))))
+    body_a.set_radius(float(get_value("body_radius_field")) * 10**float((get_value("body_radius_magnitude_field"))))
+    body_a.set_pos(0, 0)
+    body_a.set_vel(0, 0) 
 
     # moon 1
-    moon1_exists = get_value("moon1_check")
-    if moon1_exists:
-        moon1_mass = float(get_value("moon1_mass_field")) * 10**float((get_value("moon1_mass_magnitude_field")))
-        moon1_radius = float(get_value("moon1_radius_field")) * 10**float((get_value("moon1_radius_magnitude_field")))
-        moon1_alt_init = float(get_value("moon1_alt_init_field"))
-        moon1_vel_tgn_init = float(get_value("moon1_vel_tgn_init_field"))
-        moon1_vel_rad_init = float(get_value("moon1_vel_rad_init_field"))
-        moon1_long_init = float(get_value("moon1_long_init_field"))
-    else:
-        moon1_mass = 0
-        moon1_radius = 0
-        moon1_alt_init = 0
-        moon1_vel_tgn_init = 0
-        moon1_vel_rad_init = 0
-        moon1_long_init = 0
+    body_b.set_exists(get_value("moon1_check"))
+    if body_b.does_exist():
+        body_b.set_mass(float(get_value("moon1_mass_field")) * 10**float((get_value("moon1_mass_magnitude_field"))))
+        body_b.set_radius(float(get_value("moon1_radius_field")) * 10**float((get_value("moon1_radius_magnitude_field"))))
+        body_b.set_alt(float(get_value("moon1_alt_init_field")))
+        body_b.set_vel_tgn(float(get_value("moon1_vel_tgn_init_field")))
+        body_b.set_vel_rad(float(get_value("moon1_vel_rad_init_field")))
+        body_b.set_long(float(get_value("moon1_long_init_field")))
 
-    # moon 2
-    moon2_exists = get_value("moon2_check")
-    if moon2_exists:
-        moon2_mass = float(get_value("moon2_mass_field")) * 10**float((get_value("moon2_mass_magnitude_field")))
-        moon2_radius = float(get_value("moon2_radius_field")) * 10**float((get_value("moon2_radius_magnitude_field")))
-        moon2_alt_init = float(get_value("moon2_alt_init_field"))
-        moon2_vel_tgn_init = float(get_value("moon2_vel_tgn_init_field"))
-        moon2_vel_rad_init = float(get_value("moon2_vel_rad_init_field"))
-        moon2_long_init = float(get_value("moon2_long_init_field"))
+    body_c.set_exists(get_value("moon2_check"))
+    if body_c.does_exist():
+        body_c.set_mass(float(get_value("moon2_mass_field")) * 10**float((get_value("moon2_mass_magnitude_field"))))
+        body_c.set_radius(float(get_value("moon2_radius_field")) * 10**float((get_value("moon2_radius_magnitude_field"))))
+        body_c.set_alt(float(get_value("moon2_alt_init_field")))
+        body_c.set_vel_tgn(float(get_value("moon2_vel_tgn_init_field")))
+        body_c.set_vel_rad(float(get_value("moon2_vel_rad_init_field")))
+        body_c.set_long(float(get_value("moon2_long_init_field")))
+
+    orbit_init = int(get_value("init_orbiting_body_field"))
+
+    if orbit_init == 0:
+        vessel_a.set_orbiting(body_a)
+    elif orbit_init == 1:
+        vessel_a.set_orbiting(body_b)
     else:
-        moon2_mass = 0
-        moon2_radius = 0
-        moon2_alt_init = 0
-        moon2_vel_tgn_init = 0
-        moon2_vel_rad_init = 0
-        moon2_long_init = 0
+        vessel_a.set_orbiting(body_c)
 
     # global simulation inputs
-    time_increment = float(get_value("time_increment_field"))
+    time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
 ##            
 ##    except:
 ##        log_error("Input error. Make sure all design parameters are float values.", logger = "Logs")
@@ -290,6 +433,10 @@ def simulateOrbit():
         y = r * math.sin(phi)
 
         return [x, y]
+
+    def get_dist(obj1, obj2):
+        dist = ((obj1.get_pos()[0] - obj2.get_pos()[0])**2 + (obj1.get_pos()[1] - obj2.get_pos()[1])**2)**(0.5)
+        return float(dist)
          
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -299,91 +446,68 @@ def simulateOrbit():
     #set initial values
 
     time = 0
-    
-    parent_pos_x = 0
-    parent_pos_y = 0
-    parent_vel_x = 0
-    parent_vel_y = 0
 
-    if moon1_exists:
-        moon1_alt = moon1_alt_init
-        moon1_pos_x = sph2cart(moon1_alt_init, moon1_long_init)[0]
-        moon1_pos_y = sph2cart(moon1_alt_init, moon1_long_init)[1]
-        moon1_vel_x = moon1_vel_rad_init * math.cos(math.radians(moon1_long_init + 90)) + moon1_vel_tgn_init * math.cos(math.radians(moon1_long_init + 180))
-        moon1_vel_y = moon1_vel_rad_init * math.sin(math.radians(moon1_long_init + 90)) + moon1_vel_tgn_init * math.sin(math.radians(moon1_long_init + 180))
+    moons = [body_b, body_c]
+    bodies = [body_a, body_b, body_c]
+    objects = [vessel_a, body_a, body_b, body_c]
 
-    if moon2_exists:
-        moon2_alt = moon2_alt_init
-        moon2_pos_x = sph2cart(moon2_alt_init, moon2_long_init)[0]
-        moon2_pos_y = sph2cart(moon2_alt_init, moon2_long_init)[1]
-        moon2_vel_x = moon2_vel_rad_init * math.cos(math.radians(moon2_long_init + 90)) + moon1_vel_tgn_init * math.cos(math.radians(moon2_long_init + 180))
-        moon2_vel_y = moon2_vel_rad_init * math.sin(math.radians(moon2_long_init + 90)) + moon1_vel_tgn_init * math.sin(math.radians(moon2_long_init + 180))
+    # initiate moons
+    for moon in moons:
+        if moon.does_exist(): 
+            moon.set_pos(sph2cart(moon.get_alt(), moon.get_long())[0], sph2cart(moon.get_alt(), moon.get_long())[1])
+            moon.set_vel(moon.get_vel_rad() * math.cos(math.radians(moon.get_long() + 90)) + moon.get_vel_tgn() * math.cos(math.radians(moon.get_long() + 180)),
+                         moon.get_vel_rad() * math.sin(math.radians(moon.get_long() + 90)) + moon.get_vel_tgn() * math.sin(math.radians(moon.get_long() + 180)))
 
-    vessel_alt = alt_init
-    if init_orbiting_body == 0:
-        vessel_pos_x = sph2cart(alt_init + parent_body_radius, long_init)[0]
-        vessel_pos_y = sph2cart(alt_init + parent_body_radius, long_init)[1]
-        vessel_vel_x = vel_rad_init * math.cos(math.radians(long_init + 90)) + vel_tgn_init * math.cos(math.radians(long_init + 180))
-        vessel_vel_y = vel_rad_init * math.sin(math.radians(long_init + 90)) + vel_tgn_init * math.sin(math.radians(long_init + 180))
+    # initiate vessel
+    vessel_a.set_pos(sph2cart(vessel_a.get_alt() + vessel_a.get_orbiting().get_radius(), vessel_a.get_long())[0],
+                   sph2cart(vessel_a.get_alt() + vessel_a.get_orbiting().get_radius(), vessel_a.get_long())[1])
+
+    vessel_a.set_vel(vessel_a.get_vel_rad() * math.cos(math.radians(vessel_a.get_long() + 90)) + vessel_a.get_vel_tgn() * math.cos(math.radians(vessel_a.get_long() + 180)) + vessel_a.get_orbiting().get_vel()[0],
+                     vessel_a.get_vel_rad() * math.sin(math.radians(vessel_a.get_long() + 90)) + vessel_a.get_vel_tgn() * math.sin(math.radians(vessel_a.get_long() + 180)) + vessel_a.get_orbiting().get_vel()[1])
+
+
+    # apply gravity to each object, by all bodies in the simulation
+    for obj in objects:
+        for body in bodies:
+            if obj.does_exist() and body.does_exist() and not obj == body:
+                obj.update_vel(body.get_grav_pull(get_dist(obj, body)) * abs(math.cos(math.atan((obj.get_pos()[1] - body.get_pos()[1])/(obj.get_pos()[0] - body.get_pos()[0])))) * sign(body.get_pos()[0] - obj.get_pos()[0]),
+                               body.get_grav_pull(get_dist(obj, body)) * abs(math.sin(math.atan((obj.get_pos()[1] - body.get_pos()[1])/(obj.get_pos()[0] - body.get_pos()[0])))) * sign(body.get_pos()[1] - obj.get_pos()[1]),
+                               time_increment)
+                            
         
-    elif init_orbiting_body == 1 and moon1_exists:
-        vessel_pos_x = moon1_pos_x + sph2cart(alt_init + moon1_radius, long_init)[0]
-        vessel_pos_y = moon1_pos_y + sph2cart(alt_init + moon1_radius, long_init)[1]
-        vessel_vel_x = vel_rad_init * math.cos(math.radians(long_init + 90)) + vel_tgn_init * math.cos(math.radians(long_init + 180)) + moon1_vel_x
-        vessel_vel_y = vel_rad_init * math.sin(math.radians(long_init + 90)) + vel_tgn_init * math.sin(math.radians(long_init + 180)) + moon1_vel_y
-
-    elif init_orbiting_body == 2 and moon2_exists:
-        vessel_pos_x = moon2_pos_x + sph2cart(alt_init + moon2_radius, long_init)[0]
-        vessel_pos_y = moon2_pos_y + sph2cart(alt_init + moon2_radius, long_init)[1]
-        vessel_vel_x = vel_rad_init * math.cos(math.radians(long_init + 90)) + vel_tgn_init * math.cos(math.radians(long_init + 180)) + moon2_vel_x
-        vessel_vel_y = vel_rad_init * math.sin(math.radians(long_init + 90)) + vel_tgn_init * math.sin(math.radians(long_init + 180)) + moon2_vel_y
-
-    else:
-        log_error("No.", logger="Logs")
-        return
-
-    vessel_gravity_parent = calc_grav(parent_body_mass, ((parent_pos_x-vessel_pos_x)**2 + (parent_pos_y-vessel_pos_y) **2)**(0.5))
-    
-    if moon1_exists:
-        parent_gravity_moon1 = calc_grav_force(parent_body_mass, moon1_mass, ((parent_pos_x-moon1_pos_x)**2 + (parent_pos_y-moon1_pos_y)**2)**(0.5)) / (parent_body_mass)
-        vessel_gravity_moon1 = calc_grav(moon1_mass, ((moon1_pos_x-vessel_pos_x)**2 + (moon1_pos_y-vessel_pos_y)**2)**(0.5))
-        if moon2_exists:
-            moon2_gravity_moon1 = calc_grav_force(moon1_mass, moon2_mass, ((moon2_pos_x-moon1_pos_x)**2 + (moon2-moon1_pos_y)**2)**(0.5)) / (moon2_mass)
-        else:
-            moon2_gravity_moon1 = 0
-    else:
-        parent_gravity_moon1 = 0
-        vessel_gravity_moon1 = 0
-    
-    if moon2_exists:
-        parent_gravity_moon2 = calc_grav_force(parent_body_mass, moon2_mass, ((parent_pos_x-moon2_pos_x)**2 + (parent_pos_y-moon2_pos_y)**2)**(0.5)) / (parent_body_mass)
-        vessel_gravity_moon2 = calc_grav(moon2_mass, ((moon2_pos_x-vessel_pos_x)**2 + (moon2_pos_y-vessel_pos_y)**2)**(0.5))
-        if moon1_exists:
-            moon1_gravity_moon2 = calc_grav_force(moon1_mass, moon2_mass, ((moon2_pos_x-moon1_pos_x)**2 + (moon2-moon1_pos_y)**2)**(0.5)) / (moon1_mass)
-        else:
-            moon1_gravity_moon2 = 0
-    else:
-        parent_gravity_moon2 = 0
-        vessel_gravity_moon2 = 0
-        
-##    time_list = []
-##    alt_list = []
-##    vel_list = []
+    time_list = []
+    alt_list = []
+    vel_list = []
 ##    vel_rad_list = []
 ##    vel_tgn_list = []
-##    gravity_list = []
+
     vessel_pos_x_list = []
     vessel_pos_y_list = []
+
+    moon1_pos_x_list = []
+    moon1_pos_y_list = []
+
+    moon2_pos_x_list = []
+    moon2_pos_y_list = []
 
     show_item("progress_bar")
     progress_loop = 0
     enableEndFlag()
 
-    # BEGIN TIMESTEPS
-    
-    while (True):
+    clear_plot("traj_plot")
 
+    # BEGIN TIMESTEPS
+
+    cycle_num = 0
+    while (True):
+        cycle_num = cycle_num + 1
         cycle_start = t.perf_counter()
+
+        if type(cycle_num / 100) == int:
+            time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
+            
+        setSimSpeedLimits()
+        setScaleLimits()
 
         # update visualizer ---
 
@@ -391,32 +515,21 @@ def simulateOrbit():
         clear_drawing("vis_canvas")
 
         if get_value("lock_on_vessel"):
-            #vessel
+            # draw vessel
             draw_rectangle(drawing="vis_canvas", pmin=space2screen(-3,-3,680,380), pmax=space2screen(3,3,680,380), color=[200,0,0,255])
 
-            #planet
-            draw_circle(drawing="vis_canvas", center=space2screen((parent_pos_x-vessel_pos_x)/vis_scale,(parent_pos_y-vessel_pos_y)/vis_scale,680,380), radius=(parent_body_radius/vis_scale), color=[255,255,255,255])
-
-            #moon1
-            if moon1_exists:
-                draw_circle(drawing="vis_canvas", center=space2screen((moon1_pos_x-vessel_pos_x)/vis_scale,(moon1_pos_y-vessel_pos_y)/vis_scale,680,380), radius=(moon1_radius/vis_scale), color=[255,255,255,255])
-
-            if moon2_exists:
-                draw_circle(drawing="vis_canvas", center=space2screen((moon2_pos_x-vessel_pos_x)/vis_scale,(moon2_pos_y-vessel_pos_y)/vis_scale,680,380), radius=(moon2_radius/vis_scale), color=[255,255,255,255])
+            # draw planet
+            for body in bodies:
+                if body.does_exist():
+                    draw_circle(drawing="vis_canvas", center=space2screen((body.get_pos()[0]-vessel_a.get_pos()[0])/vis_scale,(body.get_pos()[1]-vessel_a.get_pos()[1])/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=[255,255,255,255])
             
         else:
-            # parent
-            draw_circle(drawing="vis_canvas", center=space2screen(parent_pos_x/vis_scale,parent_pos_y/vis_scale,680,380), radius=(parent_body_radius/vis_scale), color=[255,255,255,255])
-
+            for body in bodies:
+                if body.does_exist():
+                    draw_circle(drawing="vis_canvas", center=space2screen(body.get_pos()[0]/vis_scale,body.get_pos()[1]/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=[255,255,255,255])
             # vessel
-            draw_rectangle(drawing="vis_canvas", pmin=space2screen(vessel_pos_x/vis_scale-3,vessel_pos_y/vis_scale-3,680,380), pmax=space2screen(vessel_pos_x/vis_scale+3,vessel_pos_y/vis_scale+3,680,380), color=[200,0,0,255])
+            draw_rectangle(drawing="vis_canvas", pmin=space2screen(vessel_a.get_pos()[0]/vis_scale-3,vessel_a.get_pos()[1]/vis_scale-3,680,380), pmax=space2screen(vessel_a.get_pos()[0]/vis_scale+3,vessel_a.get_pos()[1]/vis_scale+3,680,380), color=[200,0,0,255])
 
-            #moon1
-            if moon1_exists:
-                draw_circle(drawing="vis_canvas", center=space2screen(moon1_pos_x/vis_scale,moon1_pos_y/vis_scale,680,380), radius=(moon1_radius/vis_scale), color=[255,255,255,255])
-
-            if moon2_exists:
-               draw_circle(drawing="vis_canvas", center=space2screen(moon2_pos_x/vis_scale,moon2_pos_y/vis_scale,680,380), radius=(moon2_radius/vis_scale), color=[255,255,255,255]) 
         # --- --- --- --- --- ---
 
         if progress_loop < 1.0:
@@ -427,86 +540,38 @@ def simulateOrbit():
         set_value(name="progress", value=progress_loop)
         setProgressBarOverlay("Simulation running...")
 
-##        time_list.append(time)
-##        alt_list.append(alt)
-##        vel_list.append(vel)
-##        gravity_list.append(gravity)
-        vessel_pos_x_list.append(vessel_pos_x)
-        vessel_pos_y_list.append(vessel_pos_y)
+        time_list.append(time)
+        alt_list.append(vessel_a.get_alt())
+        vel_list.append((vessel_a.get_vel()[0]**2 + vessel_a.get_vel()[1]**2)**(0.5))
+
+        vessel_pos_x_list.append(vessel_a.get_pos()[0])
+        vessel_pos_y_list.append(vessel_a.get_pos()[1])
+
+        if body_b.does_exist():
+            moon1_pos_x_list.append(body_b.get_pos()[0])
+            moon1_pos_y_list.append(body_b.get_pos()[1])
+
+        if body_c.does_exist():
+            moon2_pos_x_list.append(body_c.get_pos()[0])
+            moon2_pos_y_list.append(body_c.get_pos()[1])
 
         # - - - -
         # increment time step
         time = time + time_increment
 
-        # update gravitational acceleration magnitudes
-        vessel_gravity_parent = calc_grav(parent_body_mass, ((parent_pos_x-vessel_pos_x)**2 + (parent_pos_y-vessel_pos_y)**2)**(0.5))
-    
-        if moon1_exists:
-            parent_gravity_moon1 = calc_grav_force(parent_body_mass, moon1_mass, ((parent_pos_x-moon1_pos_x)**2 + (parent_pos_y-moon1_pos_y)**2)**(0.5)) / (parent_body_mass)
-            moon1_gravity_parent = calc_grav_force(parent_body_mass, moon1_mass, ((parent_pos_x-moon1_pos_x)**2 + (parent_pos_y-moon1_pos_y)**2)**(0.5)) / (moon1_mass)
-            vessel_gravity_moon1 = calc_grav(moon1_mass, ((moon1_pos_x-vessel_pos_x)**2 + (moon1_pos_y-vessel_pos_y)**2)**(0.5))
-            if moon2_exists:
-                moon2_gravity_moon1 = calc_grav_force(moon1_mass, moon2_mass, ((moon2_pos_x-moon1_pos_x)**2 + (moon2-moon1_pos_y)**2)**(0.5)) / (moon2_mass)
-            else:
-                moon2_gravity_moon1 = 0
-        else:
-            parent_gravity_moon1 = 0
-            vessel_gravity_moon1 = 0
-        
-        if moon2_exists:
-            parent_gravity_moon2 = calc_grav_force(parent_body_mass, moon2_mass, ((parent_pos_x-moon2_pos_x)**2 + (parent_pos_y-moon2_pos_y)**2)**(0.5)) / (parent_body_mass)
-            moon2_gravity_parent = calc_grav_force(parent_body_mass, moon2_mass, ((parent_pos_x-moon2_pos_x)**2 + (parent_pos_y-moon2_pos_y)**2)**(0.5)) / (moon2_mass)
-            vessel_gravity_moon2 = calc_grav(moon2_mass, ((moon2_pos_x-vessel_pos_x)**2 + (moon2_pos_y-vessel_pos_y)**2)**(0.5))
-            if moon1_exists:
-                moon1_gravity_moon2 = calc_grav_force(moon1_mass, moon2_mass, ((moon2_pos_x-moon1_pos_x)**2 + (moon2-moon1_pos_y)**2)**(0.5)) / (moon1_mass)
-            else:
-                moon1_gravity_moon2 = 0
-        else:
-            parent_gravity_moon2 = 0
-            vessel_gravity_moon2 = 0
-
-        # update velocities
-        vessel_vel_x = vessel_vel_x + vessel_gravity_parent * abs(math.cos(math.atan((vessel_pos_y - parent_pos_y)/(vessel_pos_x - parent_pos_x)))) * sign(parent_pos_x - vessel_pos_x) * time_increment
-        vessel_vel_y = vessel_vel_y + vessel_gravity_parent * abs(math.sin(math.atan((vessel_pos_y - parent_pos_y)/(vessel_pos_x - parent_pos_x)))) * sign(parent_pos_y - vessel_pos_y) * time_increment
-
-        if moon1_exists:
-            moon1_vel_x = moon1_vel_x + moon1_gravity_parent * abs(math.cos(math.atan((moon1_pos_y - parent_pos_y)/(moon1_pos_x - parent_pos_x)))) * sign(parent_pos_x - moon1_pos_x) * time_increment
-            moon1_vel_y = moon1_vel_y + moon1_gravity_parent * abs(math.sin(math.atan((moon1_pos_y - parent_pos_y)/(moon1_pos_x - parent_pos_x)))) * sign(parent_pos_y - moon1_pos_y) * time_increment
-
-            parent_vel_x = parent_vel_x + parent_gravity_moon1 * abs(math.cos(math.atan((parent_pos_y - moon1_pos_y)/(parent_pos_x - moon1_pos_x)))) * sign(moon1_pos_x - parent_pos_x) * time_increment
-            parent_vel_y = parent_vel_y + parent_gravity_moon1 * abs(math.sin(math.atan((parent_pos_y - moon1_pos_y)/(parent_pos_x - moon1_pos_x)))) * sign(moon1_pos_y - parent_pos_y) * time_increment
-
-            vessel_vel_x = vessel_vel_x + vessel_gravity_moon1 * abs(math.cos(math.atan((vessel_pos_y - moon1_pos_y)/(vessel_pos_x - moon1_pos_x)))) * sign(moon1_pos_x - vessel_pos_x) * time_increment
-            vessel_vel_y = vessel_vel_y + vessel_gravity_moon1 * abs(math.sin(math.atan((vessel_pos_y - moon1_pos_y)/(vessel_pos_x - moon1_pos_x)))) * sign(moon1_pos_y - vessel_pos_y) * time_increment
-
-            if moon2_exists:
-                moon1_vel_x = moon1_vel_x + moon1_gravity_moon2 * abs(math.cos(math.atan((moon1_pos_y - moon2_pos_y)/(moon1_pos_x - moon2_pos_x)))) * sign(moon2_pos_x - moon1_pos_x) * time_increment
-                moon1_vel_y = moon1_vel_y + moon1_gravity_moon2 * abs(math.sin(math.atan((moon1_pos_y - moon2_pos_y)/(moon1_pos_x - moon2_pos_x)))) * sign(moon2_pos_y - moon1_pos_y) * time_increment
-
-                moon2_vel_x = moon2_vel_x + moon1_gravity_moon2 * abs(math.cos(math.atan((moon1_pos_y - moon2_pos_y)/(moon1_pos_x - moon2_pos_x)))) * sign(moon1_pos_x - moon2_pos_x) * time_increment
-                moon2_vel_y = moon2_vel_y + moon1_gravity_moon2 * abs(math.sin(math.atan((moon1_pos_y - moon2_pos_y)/(moon1_pos_x - moon2_pos_x)))) * sign(moon1_pos_y - moon2_pos_y) * time_increment
-
-                parent_vel_x = parent_vel_x + parent_gravity_moon2 * abs(math.cos(math.atan((parent_pos_y - moon2_pos_y)/(parent_pos_x - moon2_pos_x)))) * sign(moon2_pos_x - parent_pos_x) * time_increment
-                parent_vel_y = parent_vel_y + parent_gravity_moon2 * abs(math.sin(math.atan((parent_pos_y - moon2_pos_y)/(parent_pos_x - moon2_pos_x)))) * sign(moon2_pos_y - parent_pos_y) * time_increment
-
-                vessel_vel_x = vessel_vel_x + vessel_gravity_moon2 * abs(math.cos(math.atan((vessel_pos_y - moon2_pos_y)/(vessel_pos_x - moon2_pos_x)))) * sign(moon2_pos_x - vessel_pos_x) * time_increment
-                vessel_vel_y = vessel_vel_y + vessel_gravity_moon2 * abs(math.sin(math.atan((vessel_pos_y - moon2_pos_y)/(vessel_pos_x - moon2_pos_x)))) * sign(moon2_pos_y - vessel_pos_y) * time_increment
+        # apply gravity to each object, by all bodies in the simulation
+        for obj in objects:
+            for body in bodies:
+                if obj.does_exist() and body.does_exist() and not obj == body:
+                    obj.update_vel(body.get_grav_pull(get_dist(obj, body)) * abs(math.cos(math.atan((obj.get_pos()[1] - body.get_pos()[1])/(obj.get_pos()[0] - body.get_pos()[0])))) * sign(body.get_pos()[0] - obj.get_pos()[0]),
+                                   body.get_grav_pull(get_dist(obj, body)) * abs(math.sin(math.atan((obj.get_pos()[1] - body.get_pos()[1])/(obj.get_pos()[0] - body.get_pos()[0])))) * sign(body.get_pos()[1] - obj.get_pos()[1]),
+                                   time_increment)
 
         # update positions
-        vessel_pos_x = vessel_pos_x + vessel_vel_x * time_increment
-        vessel_pos_y = vessel_pos_y + vessel_vel_y * time_increment
 
-        parent_pos_x = parent_pos_x + parent_vel_x * time_increment
-        parent_pos_y = parent_pos_y + parent_vel_y * time_increment
-
-        if moon1_exists:
-            moon1_pos_x = moon1_pos_x + moon1_vel_x * time_increment
-            moon1_pos_y = moon1_pos_y + moon1_vel_y * time_increment
-
-        if moon2_exists:
-            moon2_pos_x = moon2_pos_x + moon2_vel_x * time_increment
-            moon2_pos_y = moon2_pos_y + moon2_vel_y * time_increment
-        
+        for obj in objects:
+            if obj.does_exist():
+                obj.update_pos(obj.get_vel()[0], obj.get_vel()[1], time_increment)
         # - - - -
 
         # adjust simulation speed
@@ -514,16 +579,17 @@ def simulateOrbit():
         cycle_dt = t.perf_counter() - cycle_start
         t.sleep((time_increment-cycle_dt)*(1/speed_scale))
         
-        set_value(name="alt", value= ((parent_pos_x - vessel_pos_x)**2 + (parent_pos_y - vessel_pos_y)**2)**(0.5))
-        set_value(name="vel", value= ((vessel_vel_x - parent_vel_x)**2 + (vessel_vel_y - parent_vel_y)**2)**(0.5))
+        set_value(name="alt", value= (get_dist(vessel_a, vessel_a.get_orbiting())))
+        set_value(name="vel", value= ((vessel_a.get_vel()[0]**2 + vessel_a.get_vel()[1]**2)**(0.5)))
         set_value(name="time", value=time)
-##        set_value(name="dist", value=dist)
 
         if get_value("realtime_graph"):
-##            add_line_series(name="Altitude", plot="alt_plot",x=time_list, y=alt_list)
-##            add_line_series(name="Velocity", plot="vel_plot",x=time_list, y=vel_list)
-##            add_line_series(name="Gravity", plot="grav_plot",x=time_list, y=gravity_list)
-            add_line_series(name="Trajectory", plot="traj_plot", x=vessel_pos_x_list, y=vessel_pos_y_list)
+            add_line_series(name="Altitude", plot="alt_plot",x=time_list, y=alt_list)
+            add_line_series(name="Velocity", plot="vel_plot",x=time_list, y=vel_list)
+
+            add_line_series(name="Vessel Trajectory", plot="traj_plot", x=vessel_pos_x_list, y=vessel_pos_y_list)
+            add_line_series(name="Body B Trajectory", plot="traj_plot", x=moon1_pos_x_list, y=moon1_pos_y_list)
+            add_line_series(name="Body C Trajectory", plot="traj_plot", x=moon2_pos_x_list, y=moon2_pos_y_list)
 
         if get_value("end_flag"):
             end_flag = False
@@ -532,10 +598,12 @@ def simulateOrbit():
             break
 
     setProgressBarOverlay("Updating graphs...")
-##    add_line_series(name="Altitude", plot="alt_plot",x=time_list, y=alt_list)
-##    add_line_series(name="Velocity", plot="vel_plot",x=time_list, y=vel_list)
-##    add_line_series(name="Gravity", plot="grav_plot",x=time_list, y=gravity_list)
-    add_line_series(name="Trajectory", plot="traj_plot", x=vessel_pos_x_list, y=vessel_pos_y_list)
+    add_line_series(name="Altitude", plot="alt_plot",x=time_list, y=alt_list)
+    add_line_series(name="Velocity", plot="vel_plot",x=time_list, y=vel_list)
+
+    add_line_series(name="Vessel Trajectory", plot="traj_plot", x=vessel_pos_x_list, y=vessel_pos_y_list)
+    add_line_series(name="Body B Trajectory", plot="traj_plot", x=moon1_pos_x_list, y=moon1_pos_y_list)
+    add_line_series(name="Body C Trajectory", plot="traj_plot", x=moon2_pos_x_list, y=moon2_pos_y_list)
 
     set_value(name="progress", value=0)
     hide_item("progress_bar")
@@ -543,7 +611,7 @@ def simulateOrbit():
     log_info("Simulation completed.", logger="Logs")
 
 ##    global last_results
-##    last_results = [time_list, alt_list, vel_list, gravity_list, pos_x_list, pos_y_list]
+##    last_results = [time_list, alt_list, vel_list, pos_x_list, pos_y_list]
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #                    USER INTERFACE
@@ -560,6 +628,12 @@ def space2screen(space_x, space_y, screen_width, screen_height):
 # because dearpygui.simple doesn't have such a solution
 def setProgressBarOverlay(overlay_str):
     internal_dpg.configure_item("progress_bar", overlay=overlay_str)
+
+def setSimSpeedLimits():
+    internal_dpg.configure_item("sim_speed_field", min_value=float(get_value("sim_speed_min_field")), max_value=float(get_value("sim_speed_max_field")))
+
+def setScaleLimits():
+    internal_dpg.configure_item("vis_scale_field", min_value=float(get_value("scale_min_field")), max_value=float(get_value("scale_max_field")))
 
 #FILE OPERATIONS BAR
 with window("File I/O", width=1260, height=60, no_close=True, no_move=True):
@@ -661,11 +735,18 @@ with window("Input", width=550, height=360, no_close=True):
     add_spacing(count=6)
 
     # GLOBAL SIMULATION INPUTS
-    add_input_text(name = "time_increment_field", label = "Time Increments (s)", tip="Enter lower values for higher precision.", default_value="1")
+    add_input_text(name="sim_speed_min_field", label= "Min. Sim. Speed", default_value = "0.1", width=100, callback=setSimSpeedLimits)
+    add_same_line()
+    add_input_text(name="sim_speed_max_field", label= "Max. Sim. Speed", default_value = "100.0", width=100, callback=setSimSpeedLimits)
     add_spacing(count=6)
     add_text("Simulation Speed:")
     add_slider_float(name="sim_speed_field", label="",
-                     min_value=0.1, max_value=5000.0, default_value=1.0,
+                     min_value=float(get_value("sim_speed_min_field")), max_value=float(get_value("sim_speed_max_field")), default_value=1.0,
+                     clamped=True, width=500)
+    add_spacing(count=6)
+    add_text("Simulation Precision:")
+    add_slider_float(name="sim_precision_field", label="",
+                     min_value=1, max_value=100.0, default_value=10.0,
                      clamped=True, width=500)
     add_checkbox(name = "realtime_graph", label = "Update graphs every cycle", tip="Looks really cool but significantly reduces performance.")
     add_spacing(count=6)
@@ -686,13 +767,16 @@ with window("Output", width=700, height=560, no_close=True):
 
     # VISUALIZER
 
-    add_input_text(name="alt_output", label="Dist from Earth center (m)", source="alt", readonly=True, enabled=False, parent="vis_tab")
+    add_input_text(name="alt_output", label="Dist from parent center (m)", source="alt", readonly=True, enabled=False, parent="vis_tab")
     #add_input_text(name="dist_output", label="Dist. From Body Center (m)", source="dist", readonly=True, enabled=False, parent="vis_tab")
     add_input_text(name="vel_output", label="Velocity (m/s)", source="vel", readonly=True, enabled=False, parent="vis_tab")
     add_input_text(name="time_output", label="Time (s)", source="time", readonly=True, enabled=False, parent="vis_tab")
 
+    add_input_text(name="scale_min_field", label="Scale Min", parent="vis_tab", default_value="1000.0", width=100, callback=setScaleLimits)
+    add_same_line(parent="vis_tab")
+    add_input_text(name="scale_max_field", label="Scale Max", parent="vis_tab", default_value="10000000.0", width=100, callback=setScaleLimits)
     add_slider_float(name="vis_scale_field", label="Scale (m/pixel)",
-                     min_value=1000.0, max_value=10000000.0, default_value=50000.0,
+                     min_value=float(get_value("scale_min_field")), max_value=float(get_value("scale_max_field")), default_value=50000.0,
                      clamped=True, parent="vis_tab", width=300)
 
     add_same_line(parent="vis_tab")
