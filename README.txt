@@ -1,6 +1,6 @@
-Simulation speed is ultimately limited by the abilities of your processor.
-If you want to accelerate the simulation to very high speeds, you will
-have to use wider time_increment values, sacrificing precision.
+If your simulation is "choppy" at high time acceleration
+setting, you might want to reduce your precision to get a
+smoother run. But if you want a more accurate simulation,
+you need to be a bit patient.
 
-I will probably make time_increment adjustable while the simulation is
-running... eventually.
+I guess this is why games don't do this n-body thing.
