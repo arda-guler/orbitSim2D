@@ -1,6 +1,6 @@
 #   N-BODY ORBIT SIMULATOR
 
-version = "0.2.1"
+version = "0.3.0"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -16,17 +16,6 @@ set_main_window_title("N-body Orbit Sim 2D | MRS")
 set_theme("Dark")
 
 calc_run_number = 0
-
-#variables to save values of last run
-#saving in another variable in case user makes changes to the input fields before clicking Export
-last_alt_init = None
-last_vel_rad_init = None
-last_vel_tgn_init = None
-last_body_mass = None
-last_body_radius = None
-last_time_increment = None
-
-last_results = []
 
 grav_const = scp_const.G
 
@@ -200,7 +189,34 @@ def simulateOrbit():
             self.vel_tgn = 0
             self.vel_rad = 0
             self.long = 0
-            exists = False
+            self.exists = False
+            self.label = "Body"
+            self.color = [255, 255, 255, 255]
+            self.x_list = []
+            self.y_list = []
+
+        def set_label (self, new_label):
+            self.label = new_label
+
+        def get_label (self):
+            return self.label
+
+        def set_color(self, new_color):
+            self.color = new_color
+
+        def get_color(self):
+            return self.color
+
+        def clear_traj_history(self):
+            self.x_list = []
+            self.y_list = []
+
+        def update_traj(self):
+            self.x_list.append(self.pos_x)
+            self.y_list.append(self.pos_y)
+
+        def get_traj(self):
+            return [self.x_list, self.y_list]
 
         def set_pos (self, x, y):
             self.pos_x = x
@@ -277,9 +293,36 @@ def simulateOrbit():
             self.vel_y = 0
             self.vel_x = 0
             self.orbiting = None
+            self.label = "Vessel"
+            self.color = [200,0,0,255]
+            self.x_list = []
+            self.y_list = []
+
+        def set_label (self, new_label):
+            self.label = new_label
+
+        def get_label (self):
+            return self.label
 
         def does_exist (self):
             return True
+
+        def set_color(self, new_color):
+            self.color = new_color
+
+        def get_color(self):
+            return self.color
+
+        def clear_traj_history(self):
+            self.x_list = []
+            self.y_list = []
+
+        def update_traj(self):
+            self.x_list.append(self.pos_x)
+            self.y_list.append(self.pos_y)
+
+        def get_traj(self):
+            return [self.x_list, self.y_list]
 
         def set_pos (self, x, y):
             self.pos_x = x
@@ -343,6 +386,8 @@ def simulateOrbit():
     vessel_a.set_vel_tgn(float(get_value("vel_tgn_init_field")))
     vessel_a.set_vel_rad(float(get_value("vel_rad_init_field")))
     vessel_a.set_long(float(get_value("long_init_field")))
+    vessel_a.set_label(str(get_value("vessel_name")))
+    vessel_a.set_color(get_value("vessel_color_edit"))
     
     # create bodies
     body_a = body()
@@ -354,7 +399,9 @@ def simulateOrbit():
     body_a.set_mass(float(get_value("body_mass_field")) * 10**float((get_value("body_mass_magnitude_field"))))
     body_a.set_radius(float(get_value("body_radius_field")) * 10**float((get_value("body_radius_magnitude_field"))))
     body_a.set_pos(0, 0)
-    body_a.set_vel(0, 0) 
+    body_a.set_vel(0, 0)
+    body_a.set_label(str(get_value("parent_name")))
+    body_a.set_color(get_value("parent_color_edit"))
 
     # moon 1
     body_b.set_exists(get_value("moon1_check"))
@@ -365,6 +412,8 @@ def simulateOrbit():
         body_b.set_vel_tgn(float(get_value("moon1_vel_tgn_init_field")))
         body_b.set_vel_rad(float(get_value("moon1_vel_rad_init_field")))
         body_b.set_long(float(get_value("moon1_long_init_field")))
+        body_b.set_label(str(get_value("moon1_name")))
+        body_b.set_color(get_value("moon1_color_edit"))
 
     body_c.set_exists(get_value("moon2_check"))
     if body_c.does_exist():
@@ -374,6 +423,8 @@ def simulateOrbit():
         body_c.set_vel_tgn(float(get_value("moon2_vel_tgn_init_field")))
         body_c.set_vel_rad(float(get_value("moon2_vel_rad_init_field")))
         body_c.set_long(float(get_value("moon2_long_init_field")))
+        body_c.set_label(str(get_value("moon2_name")))
+        body_c.set_color(get_value("moon2_color_edit"))
 
     orbit_init = int(get_value("init_orbiting_body_field"))
 
@@ -386,6 +437,7 @@ def simulateOrbit():
 
     # global simulation inputs
     time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
+    
 ##            
 ##    except:
 ##        log_error("Input error. Make sure all design parameters are float values.", logger = "Logs")
@@ -414,17 +466,7 @@ def simulateOrbit():
 
     def sign(x): return 1 if x >= 0 else -1
 
-    def calc_grav(body_mass, dist):
-        global grav_const
-        gravity = (grav_const * body_mass) / (dist**2)
-        return gravity
-
-    def calc_grav_force(mass1, mass2, dist):
-        global grav_const
-        gravity_force = (grav_const * mass1 * mass2) / (dist**2)
-        return gravity_force
-
-    # takes longitude (in degrees) and altitude, gives relative x and y position
+    # takes longitude (in degrees) and radial distance, gives relative x and y position
     def sph2cart(r, long_theta):
         phi = long_theta + 90
         phi = math.radians(phi)
@@ -447,6 +489,7 @@ def simulateOrbit():
 
     time = 0
 
+    vessels = [vessel_a]
     moons = [body_b, body_c]
     bodies = [body_a, body_b, body_c]
     objects = [vessel_a, body_a, body_b, body_c]
@@ -465,6 +508,9 @@ def simulateOrbit():
     vessel_a.set_vel(vessel_a.get_vel_rad() * math.cos(math.radians(vessel_a.get_long() + 90)) + vessel_a.get_vel_tgn() * math.cos(math.radians(vessel_a.get_long() + 180)) + vessel_a.get_orbiting().get_vel()[0],
                      vessel_a.get_vel_rad() * math.sin(math.radians(vessel_a.get_long() + 90)) + vessel_a.get_vel_tgn() * math.sin(math.radians(vessel_a.get_long() + 180)) + vessel_a.get_orbiting().get_vel()[1])
 
+    # reset trajectory data for new simulation
+    for obj in objects:
+        obj.clear_traj_history()
 
     # apply gravity to each object, by all bodies in the simulation
     for obj in objects:
@@ -481,22 +527,13 @@ def simulateOrbit():
 ##    vel_rad_list = []
 ##    vel_tgn_list = []
 
-    vessel_pos_x_list = []
-    vessel_pos_y_list = []
-
-    moon1_pos_x_list = []
-    moon1_pos_y_list = []
-
-    moon2_pos_x_list = []
-    moon2_pos_y_list = []
-
     show_item("progress_bar")
     progress_loop = 0
     enableEndFlag()
 
     clear_plot("traj_plot")
 
-    # BEGIN TIMESTEPS
+    # --- BEGIN TIMESTEPS ---
 
     cycle_num = 0
     while (True):
@@ -509,26 +546,38 @@ def simulateOrbit():
         setSimSpeedLimits()
         setScaleLimits()
 
-        # update visualizer ---
+        # --- update visualizer ---
 
         vis_scale = float(get_value("vis_scale_field"))
         clear_drawing("vis_canvas")
 
         if get_value("lock_on_vessel"):
             # draw vessel
-            draw_rectangle(drawing="vis_canvas", pmin=space2screen(-3,-3,680,380), pmax=space2screen(3,3,680,380), color=[200,0,0,255])
+            for vessel in vessels:
+                if vessel.does_exist():
+                    draw_rectangle(drawing="vis_canvas", pmin=space2screen(-3,-3,680,380), pmax=space2screen(3,3,680,380), color=vessel.get_color())
+                    if get_value("display_labels"):
+                        draw_text(drawing="vis_canvas", pos=space2screen(6, 6, 680, 380), text=vessel.get_label(), size=12, color=vessel.get_color())
 
             # draw planet
             for body in bodies:
                 if body.does_exist():
-                    draw_circle(drawing="vis_canvas", center=space2screen((body.get_pos()[0]-vessel_a.get_pos()[0])/vis_scale,(body.get_pos()[1]-vessel_a.get_pos()[1])/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=[255,255,255,255])
+                    draw_circle(drawing="vis_canvas", center=space2screen((body.get_pos()[0]-vessel_a.get_pos()[0])/vis_scale,(body.get_pos()[1]-vessel_a.get_pos()[1])/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=body.get_color())
+                    if get_value("display_labels"):
+                        draw_text(drawing="vis_canvas", pos=space2screen((body.get_pos()[0]-vessel_a.get_pos()[0])/vis_scale+3,(body.get_pos()[1]-vessel_a.get_pos()[1])/vis_scale+3,680,380), text=body.get_label() , size=14, color=body.get_color())
             
         else:
             for body in bodies:
                 if body.does_exist():
-                    draw_circle(drawing="vis_canvas", center=space2screen(body.get_pos()[0]/vis_scale,body.get_pos()[1]/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=[255,255,255,255])
-            # vessel
-            draw_rectangle(drawing="vis_canvas", pmin=space2screen(vessel_a.get_pos()[0]/vis_scale-3,vessel_a.get_pos()[1]/vis_scale-3,680,380), pmax=space2screen(vessel_a.get_pos()[0]/vis_scale+3,vessel_a.get_pos()[1]/vis_scale+3,680,380), color=[200,0,0,255])
+                    draw_circle(drawing="vis_canvas", center=space2screen(body.get_pos()[0]/vis_scale,body.get_pos()[1]/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=body.get_color())
+                    if get_value("display_labels"):
+                        draw_text(drawing="vis_canvas", pos=space2screen(body.get_pos()[0]/vis_scale+3,body.get_pos()[1]/vis_scale+3,680,380), size=14, text=body.get_label(), color=body.get_color())
+
+            for vessel in vessels:
+                if vessel.does_exist():
+                    draw_rectangle(drawing="vis_canvas", pmin=space2screen(vessel.get_pos()[0]/vis_scale-3,vessel.get_pos()[1]/vis_scale-3,680,380), pmax=space2screen(vessel.get_pos()[0]/vis_scale+3,vessel.get_pos()[1]/vis_scale+3,680,380), color=vessel.get_color())
+                    if get_value("display_labels"):
+                        draw_text(drawing="vis_canvas", pos=space2screen(vessel.get_pos()[0]/vis_scale+6, vessel.get_pos()[1]/vis_scale+6, 680, 380), size=12, text=vessel.get_label(), color=vessel.get_color())
 
         # --- --- --- --- --- ---
 
@@ -540,22 +589,16 @@ def simulateOrbit():
         set_value(name="progress", value=progress_loop)
         setProgressBarOverlay("Simulation running...")
 
+        # update lists
         time_list.append(time)
         alt_list.append(vessel_a.get_alt())
         vel_list.append((vessel_a.get_vel()[0]**2 + vessel_a.get_vel()[1]**2)**(0.5))
 
-        vessel_pos_x_list.append(vessel_a.get_pos()[0])
-        vessel_pos_y_list.append(vessel_a.get_pos()[1])
+        for obj in objects:
+            if obj.does_exist():
+                obj.update_traj()
 
-        if body_b.does_exist():
-            moon1_pos_x_list.append(body_b.get_pos()[0])
-            moon1_pos_y_list.append(body_b.get_pos()[1])
-
-        if body_c.does_exist():
-            moon2_pos_x_list.append(body_c.get_pos()[0])
-            moon2_pos_y_list.append(body_c.get_pos()[1])
-
-        # - - - -
+        # - - - - ITERATIVE PHYSICS HAPPEN HERE - - - -
         # increment time step
         time = time + time_increment
 
@@ -568,17 +611,17 @@ def simulateOrbit():
                                    time_increment)
 
         # update positions
-
         for obj in objects:
             if obj.does_exist():
                 obj.update_pos(obj.get_vel()[0], obj.get_vel()[1], time_increment)
-        # - - - -
+        # - - - -   - - - -   - - - -   - - - -   - - - -
 
         # adjust simulation speed
         speed_scale = get_value("sim_speed_field")
         cycle_dt = t.perf_counter() - cycle_start
         t.sleep((time_increment-cycle_dt)*(1/speed_scale))
         
+        # update displays
         set_value(name="alt", value= (get_dist(vessel_a, vessel_a.get_orbiting())))
         set_value(name="vel", value= ((vessel_a.get_vel()[0]**2 + vessel_a.get_vel()[1]**2)**(0.5)))
         set_value(name="time", value=time)
@@ -587,23 +630,23 @@ def simulateOrbit():
             add_line_series(name="Altitude", plot="alt_plot",x=time_list, y=alt_list)
             add_line_series(name="Velocity", plot="vel_plot",x=time_list, y=vel_list)
 
-            add_line_series(name="Vessel Trajectory", plot="traj_plot", x=vessel_pos_x_list, y=vessel_pos_y_list)
-            add_line_series(name="Body B Trajectory", plot="traj_plot", x=moon1_pos_x_list, y=moon1_pos_y_list)
-            add_line_series(name="Body C Trajectory", plot="traj_plot", x=moon2_pos_x_list, y=moon2_pos_y_list)
+            for obj in objects:
+                if obj.does_exist():
+                    add_line_series(name=str(obj.get_label() + " Traj"), plot="traj_plot", x=obj.get_traj()[0], y=obj.get_traj()[1], color=obj.get_color())
 
         if get_value("end_flag"):
-            end_flag = False
             disableEndFlag()
             set_value("end_flag", value=False)
             break
 
+    # post-simulation
     setProgressBarOverlay("Updating graphs...")
     add_line_series(name="Altitude", plot="alt_plot",x=time_list, y=alt_list)
     add_line_series(name="Velocity", plot="vel_plot",x=time_list, y=vel_list)
 
-    add_line_series(name="Vessel Trajectory", plot="traj_plot", x=vessel_pos_x_list, y=vessel_pos_y_list)
-    add_line_series(name="Body B Trajectory", plot="traj_plot", x=moon1_pos_x_list, y=moon1_pos_y_list)
-    add_line_series(name="Body C Trajectory", plot="traj_plot", x=moon2_pos_x_list, y=moon2_pos_y_list)
+    for obj in objects:
+        if obj.does_exist():
+            add_line_series(name=str(obj.get_label() + "Traj"), plot="traj_plot", x=obj.get_traj()[0], y=obj.get_traj()[1], color=obj.get_color())
 
     set_value(name="progress", value=0)
     hide_item("progress_bar")
@@ -673,6 +716,11 @@ with window("Input", width=550, height=360, no_close=True):
     add_input_text(name = "vel_rad_init_field", label = "Init. Radial Vel. (m/s)", width=175, parent="vessel_input_tab")
     add_spacing(count=6, parent="vessel_input_tab")
     add_input_text(name = "long_init_field", label = "Init. Longitude (degrees)", width=175, parent="vessel_input_tab", tip="Zero at 12 o'clock of orbited body, increases counterclockwise.")
+    add_spacing(count=6, parent="vessel_input_tab")
+    add_separator(parent="vessel_input_tab")
+    add_spacing(count=6, parent="vessel_input_tab")
+    add_input_text(name="vessel_name", label="Vessel Name", width=150, parent="vessel_input_tab")
+    add_color_edit4(name="vessel_color_edit", label="Vessel Visualizer Color", default_value=[200,0,0,255], parent="vessel_input_tab")
 
     # PARENT BODY INPUTS
     add_spacing(count=6, parent="main_body_input_tab")
@@ -686,6 +734,11 @@ with window("Input", width=550, height=360, no_close=True):
     add_text("x 10^",parent="main_body_input_tab")
     add_same_line(parent="main_body_input_tab")
     add_input_text(name = "body_radius_magnitude_field", label = "Body Radius (m)", width=100, parent="main_body_input_tab")
+    add_spacing(count=6, parent="main_body_input_tab")
+    add_separator(parent="main_body_input_tab")
+    add_spacing(count=6, parent="main_body_input_tab")
+    add_input_text(name="parent_name", label="Body Name", width=150, parent="main_body_input_tab")
+    add_color_edit4(name="parent_color_edit", label="Body Visualizer Color", default_value=[255,255,255,255], parent="main_body_input_tab")
 
     # MOON 1 INPUTS
     add_spacing(count=6, parent="moon1_input_tab")
@@ -707,6 +760,11 @@ with window("Input", width=550, height=360, no_close=True):
     add_input_text(name = "moon1_vel_rad_init_field", label = "Init. Radial Vel. (m/s)", width=100, parent="moon1_input_tab", tip="Rel. to parent body.")
     add_spacing(count=6,parent="moon1_input_tab")
     add_input_text(name = "moon1_long_init_field", label = "Init. Longitude (degrees)", width=100, parent="moon1_input_tab", tip="Zero at 12 o'clock of parent body, increases counterclockwise.")
+    add_spacing(count=6, parent="moon1_input_tab")
+    add_separator(parent="moon1_input_tab")
+    add_spacing(count=6, parent="moon1_input_tab")
+    add_input_text(name="moon1_name", label="Body Name", width=150, parent="moon1_input_tab")
+    add_color_edit4(name="moon1_color_edit", label="Body Visualizer Color", default_value=[255,255,255,255], parent="moon1_input_tab")
 
     # MOON 2 INPUTS
     add_spacing(count=6, parent="moon2_input_tab")
@@ -719,7 +777,7 @@ with window("Input", width=550, height=360, no_close=True):
     add_input_text(name = "moon2_mass_magnitude_field", label = "Body Mass (kg)", width=100, parent="moon2_input_tab")
     add_input_text(name = "moon2_radius_field", label = "", width=175, parent="moon2_input_tab")
     add_same_line(parent="moon2_input_tab")
-    add_text("x 10^",parent="moon2_input_tab")
+    add_text("x 10^", parent="moon2_input_tab")
     add_same_line(parent="moon2_input_tab")
     add_input_text(name = "moon2_radius_magnitude_field", label = "Body Radius (m)", width=100, parent="moon2_input_tab")
     add_spacing(count=6,parent="moon2_input_tab")
@@ -728,6 +786,11 @@ with window("Input", width=550, height=360, no_close=True):
     add_input_text(name = "moon2_vel_rad_init_field", label = "Init. Radial Vel. (m/s)", width=100, parent="moon2_input_tab", tip="Rel. to parent body.")
     add_spacing(count=6,parent="moon2_input_tab")
     add_input_text(name = "moon2_long_init_field", label = "Init. Longitude (degrees)", width=100, parent="moon2_input_tab", tip="Zero at 12 o'clock of parent body, increases counterclockwise.")
+    add_spacing(count=6, parent="moon2_input_tab")
+    add_separator(parent="moon2_input_tab")
+    add_spacing(count=6, parent="moon2_input_tab")
+    add_input_text(name="moon2_name", label="Body Name", width=150, parent="moon2_input_tab")
+    add_color_edit4(name="moon2_color_edit", label="Body Visualizer Color", default_value=[255,255,255,255], parent="moon2_input_tab")
 
     # spacing
     add_spacing(count=6)
@@ -775,6 +838,9 @@ with window("Output", width=700, height=560, no_close=True):
     add_input_text(name="scale_min_field", label="Scale Min", parent="vis_tab", default_value="1000.0", width=100, callback=setScaleLimits)
     add_same_line(parent="vis_tab")
     add_input_text(name="scale_max_field", label="Scale Max", parent="vis_tab", default_value="10000000.0", width=100, callback=setScaleLimits)
+    add_same_line(parent="vis_tab")
+    add_checkbox(name="display_labels", label="Show Labels", parent="vis_tab")
+    
     add_slider_float(name="vis_scale_field", label="Scale (m/pixel)",
                      min_value=float(get_value("scale_min_field")), max_value=float(get_value("scale_max_field")), default_value=50000.0,
                      clamped=True, parent="vis_tab", width=300)
@@ -799,8 +865,6 @@ with window("Output", width=700, height=560, no_close=True):
 ##    end("vertical_rate_tab")
 ##    add_tab(name="tangential_rate_tab", label="Tgnt. Vel.", parent="output_tabs")
 ##    end("tangential_rate_tab")
-    add_tab(name="grav_tab", label="Gravity", parent="output_tabs")
-    end("grav_tab")
     add_tab(name="params_tab", label="Params.", parent="output_tabs")
     end("params_tab")
 
@@ -825,9 +889,6 @@ with window("Output", width=700, height=560, no_close=True):
 ##
 ##    add_plot(name="vel_tan_plot", label="Tangential Velocity vs Time",
 ##             x_axis_name="Time (s)", y_axis_name = "Tangential Velocity (m/s)", anti_aliased=True, parent="tangential_rate_tab")
-
-    add_plot(name="grav_plot", label="Gravity vs Time",
-             x_axis_name="Time (s)", y_axis_name = "Gravity (m/s^2)", anti_aliased=True, parent="grav_tab")
 
     add_input_text(name = "p_apoapsis_output_field", label = "Apoapsis (m)",
                    source="apoapsis", readonly=True, enabled=False, parent="params_tab")
