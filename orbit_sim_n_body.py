@@ -646,7 +646,7 @@ def simulateOrbit():
 
     for obj in objects:
         if obj.does_exist():
-            add_line_series(name=str(obj.get_label() + "Traj"), plot="traj_plot", x=obj.get_traj()[0], y=obj.get_traj()[1], color=obj.get_color())
+            add_line_series(name=str(obj.get_label() + " Traj"), plot="traj_plot", x=obj.get_traj()[0], y=obj.get_traj()[1], color=obj.get_color())
 
     set_value(name="progress", value=0)
     hide_item("progress_bar")
