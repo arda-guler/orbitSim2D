@@ -1,6 +1,6 @@
-#   N-BODY ORBIT SIMULATOR
+#   2D N-BODY ORBIT SIMULATOR
 
-version = "0.3.0"
+version = "0.4.0"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -21,148 +21,205 @@ grav_const = scp_const.G
 
 set_value(name="progress", value=0)
 
+#save latest simulation inputs in global variables - for export if required
+
+last_run_inputs = []
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #                 FILE IMPORT/EXPORT
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-##def importFile():
-##
-##    try:
-##        import_filepath = get_value("filepath_field")
-##        
-##        if not import_filepath[-4:] == ".txt":
-##            if import_filepath[-5:] == ".xlsx":
-##                log_warning("Exported .xlsx files don't contain input info. Trying " + import_filepath[:-5] + ".txt instead...", logger="Logs")
-##                import_filepath = import_filepath[:-5] + ".txt"
-##            else:
-##                import_filepath = import_filepath + ".txt"
-##            
-##        log_info("Importing inputs from " + import_filepath, logger="Logs")
-##        import_file = open(import_filepath, "r")
-##    except:
-##        log_error("Import failed. Check filepath.", logger="Logs")
-##        return
-##
-##    try:
-##        import_lines = import_file.readlines()
-##        if not import_lines[0][18:-1] == version:
-##            log_warning("Save file version does not match software version. Import might fail.", logger="Logs")
-##
-##        set_value(name="alt_init_field", value=import_lines[4][18:-3])
-##        set_value(name="vel_tgn_init_field", value=import_lines[5][29:-5])
-##        set_value(name="vel_rad_init_field", value=import_lines[6][25:-5])
-##        set_value(name="body_mass_field", value=import_lines[7][11:-4])
-##        set_value(name="body_mass_magnitude_field", value="0")
-##        set_value(name="body_radius_field", value=import_lines[8][13:-3])
-##        set_value(name="body_radius_magnitude_field", value="0")
-##        set_value(name="time_increment_field", value=import_lines[9][16:-3])
-##            
-##    except:
-##        log_error("Import failed. Check file formatting.", logger="Logs")
-##        return
-##
-##    log_info("Import successful.", logger="Logs")
-##
-##def exportFile():
-##
-##    global version
-##    
-##    if not calc_run_number > 0:
-##        log_error("Cannot export. Run the calculations first.", logger="Logs")
-##        return
-##
-##    show_item("progress_bar")
-##    setProgressBarOverlay("Attempting export...")
-##    excelFilename = get_value("filepath_field")
-##
-##    # sanitize filename
-##    if not excelFilename == "" or excelFilename == None:
-##        log_info("Attempting export (this might take a while)...", logger = "Logs")
-##        if len(excelFilename) > 5 and excelFilename[-5:] == ".xlsx":
-##            exportFile = excelFilename
-##        elif len(excelFilename) > 4 and excelFilename[-4:] == ".txt":
-##            exportFile = excelFilename[:-4] + ".xlsx"
-##        else:
-##            exportFile = excelFilename + ".xlsx"
-##
-##        # Actual writing to Excel happens here
-##        try:
-##            
-##            # map of last_results:
-##            # [time_list, alt_list, vel_list, gravity_list, pos_x_list, pos_y_list]
-##            # [0]: time_list
-##            # [1]: alt_list
-##            # [2]: vel_list
-##            # [3]: gravity_list
-##            # [4]: pos_x_list
-##            # [5]: pos_y_list
-##
-##            setProgressBarOverlay("Preparing data for export...")
-##
-##            export_alt = {'Time (s)': last_results[0], 'Altitude (m)': last_results[1]}
-##            export_vel = {'Time (s)': last_results[0], 'Velocity (m/s)': last_results[2]}
-##            export_grav = {'Time (s)': last_results[0], 'Gravity (m/s^2)': last_results[3]}
-##            export_traj = {'Pos_X (m)': last_results[4], 'Pos_Y (m)': last_results[5]}
-##
-##            df_alt = pd.DataFrame(export_alt)
-##            df_vel = pd.DataFrame(export_vel)
-##            df_grav = pd.DataFrame(export_grav)
-##            df_traj = pd.DataFrame(export_traj)
-##
-##            with pd.ExcelWriter(exportFile) as writer:
-##                set_value(name="progress", value=0.25)
-##                setProgressBarOverlay("Writing trajectory...")
-##                df_traj.to_excel(writer, sheet_name = 'Trajectory')
-##                set_value(name="progress", value=0.50)
-##                setProgressBarOverlay("Writing altitude...")
-##                df_alt.to_excel(writer, sheet_name = 'Altitude')
-##                set_value(name="progress", value=0.75)
-##                setProgressBarOverlay("Writing velocity...")
-##                df_vel.to_excel(writer, sheet_name = 'Velocity')
-##                set_value(name="progress", value=0.95)
-##                setProgressBarOverlay("Writing gravity...")
-##                df_grav.to_excel(writer, sheet_name = 'Gravity')
-##            
-##            setProgressBarOverlay("Finishing xlsx export...")
-##  
-##            log_info("Successfully saved data to " + exportFile, logger = "Logs")
-##            
-##        except:
-##            log_error("Excel export failed.", logger = "Logs")
-##
-##        setProgressBarOverlay("Saving inputs to TXT...")
-##        
-##        # Save given inputs to TXT
-##        try:
-##            set_value(name="progress", value=0.96)
-##            inputSaveFile = exportFile[0:-5] + ".txt"
-##            result_file = open(inputSaveFile, "w")
-##            result_file.write("Save file version " + version + "\n\n")
-##            result_file.write("INPUTS\n\n")
-##            result_file.write("Initial altitude: ")
-##            result_file.write(str(last_alt_init)+" m\n")
-##            result_file.write("Initial tangential velocity: ")
-##            result_file.write(str(last_vel_tgn_init)+" m/s\n")
-##            result_file.write("Initial radial velocity: ")
-##            result_file.write(str(last_vel_rad_init)+" m/s\n")
-##            result_file.write("Body mass: ")
-##            result_file.write(str(last_body_mass)+" kg\n")
-##            result_file.write("Body radius: ")
-##            result_file.write(str(last_body_radius)+" m\n")
-##            result_file.write("Time increment: ")
-##            result_file.write(str(last_time_increment)+" s\n")
-##            result_file.close()
-##            log_info("Inputs saved in " + inputSaveFile, logger = "Logs")
-##        except:
-##            log_error("TXT export failed.", logger = "Logs")  
-##        
-##    else:
-##        log_warning("No filename provided. Export aborted.", logger = "Logs")
-##    set_value(name="progress", value=1)
-##    hide_item("progress_bar")
-##    log_info("Done.", logger = "Logs")
-##    set_value(name="progress", value=0)
-##    setProgressBarOverlay("")
+def importFile():
+
+    try:
+        import_filepath = get_value("filepath_field")
+        
+        if not import_filepath[-4:] == ".txt":
+            import_filepath = import_filepath + ".txt"
+            
+        log_info("Importing inputs from " + import_filepath, logger="Logs")
+        import_file = open(import_filepath, "r")
+    except:
+        log_error("Import failed. Check filepath.", logger="Logs")
+        return
+
+    try:
+        import_lines = import_file.readlines()
+        if not import_lines[0][18:-1] == version:
+            log_warning("Save file version does not match software version. Import might fail.", logger="Logs")
+
+        # import vessel settings
+        set_value(name="alt_init_field", value=import_lines[4][18:-3])
+        set_value(name="vel_tgn_init_field", value=import_lines[5][29:-5])
+        set_value(name="vel_rad_init_field", value=import_lines[6][25:-5])
+        set_value(name="long_init_field", value=import_lines[7][19:-4])
+        set_value(name="vessel_name", value=import_lines[8][14:-1])
+        set_value(name="vessel_color_edit", value=list(import_lines[9][14:-1]))
+        set_value(name="init_orbiting_body_field", value=int(import_lines[10][27:-1]))
+
+        # import parent body
+        set_value(name="body_mass_field", value=import_lines[13][18:-4])
+        set_value(name="body_mass_magnitude_field", value="0")
+        set_value(name="body_radius_field", value=import_lines[14][20:-3])
+        set_value(name="body_radius_magnitude_field", value="0")
+        set_value(name="parent_name", value=import_lines[15][18:-1])
+        set_value(name="parent_color_edit", value=list(import_lines[16][19:-1]))
+
+        # import body_b
+        if import_lines[18][18:-1] == "True":
+            set_value(name="moon1_check", value=True)
+            set_value(name="moon1_mass_field", value=import_lines[19][13:-4])
+            set_value(name="moon1_mass_magnitude_field", value="0")
+            set_value(name="moon1_radius_field", value=import_lines[20][15:-3])
+            set_value(name="moon1_radius_magnitude_field", value="0")
+            set_value(name="moon1_alt_init_field", value=import_lines[21][23:-3])
+            set_value(name="moon1_vel_tgn_init_field", value=import_lines[22][30:-5])
+            set_value(name="moon1_vel_rad_init_field", value=import_lines[23][26:-5])
+            set_value(name="moon1_long_init_field", value=import_lines[24][20:-5])
+            set_value(name="moon1_name", value=import_lines[25][13:-1])
+            set_value(name="moon1_color_edit", value=list(import_lines[26][14:-1]))
+        else:
+            set_value(name="moon1_check", value=False)
+
+        # import body_c
+        if import_lines[28][18:-1] == "True":
+            set_value(name="moon2_check", value=True)
+            set_value(name="moon2_mass_field", value=import_lines[29][13:-4])
+            set_value(name="moon2_mass_magnitude_field", value="0")
+            set_value(name="moon2_radius_field", value=import_lines[30][15:-3])
+            set_value(name="moon2_radius_magnitude_field", value="0")
+            set_value(name="moon2_alt_init_field", value=import_lines[31][23:-3])
+            set_value(name="moon2_vel_tgn_init_field", value=import_lines[32][30:-5])
+            set_value(name="moon2_vel_rad_init_field", value=import_lines[33][26:-5])
+            set_value(name="moon2_long_init_field", value=import_lines[34][20:-5])
+            set_value(name="moon2_name", value=import_lines[35][13:-1])
+            set_value(name="moon2_color_edit", value=list(import_lines[36][14:-1]))
+        else:
+            set_value(name="moon2_check", value=False)
+            
+    except:
+        log_error("Import failed. Check file formatting.", logger="Logs")
+        return
+
+    log_info("Import successful.", logger="Logs")
+
+def exportFile():
+
+    global version
+    
+    if not calc_run_number > 0:
+        log_error("Cannot export. Run the calculations first.", logger="Logs")
+        return
+
+    show_item("progress_bar")
+    setProgressBarOverlay("Attempting export...")
+    saveFilename = get_value("filepath_field")
+
+    # sanitize filename
+    if not saveFilename == "" or saveFilename == None:
+        log_info("Attempting export...", logger = "Logs")
+        if len(saveFilename) > 4 and saveFilename[-4:] == ".txt":
+            exportFile = saveFilename
+        else:
+            exportFile = saveFilename + ".txt"
+
+        setProgressBarOverlay("Saving inputs to TXT...")
+        
+        # Save given inputs to TXT
+        # last_run_inputs = [vessel_a, body_a, body_b, body_c]
+
+        global last_run_inputs
+        vessel_data = last_run_inputs[0]
+        body_a_data = last_run_inputs[1]
+        body_b_data = last_run_inputs[2]
+        body_c_data = last_run_inputs[3]
+        
+        try:
+            set_value(name="progress", value=0.50)
+            result_file = open(exportFile, "w")
+            result_file.write("Save file version " + version + "\n\n")
+            result_file.write("INPUTS\n\n")
+
+            # vessel inputs
+            result_file.write("Initial altitude: ")
+            result_file.write(str(vessel_data[0])+" m\n")
+            result_file.write("Initial tangential velocity: ")
+            result_file.write(str(vessel_data[1])+" m/s\n")
+            result_file.write("Initial radial velocity: ")
+            result_file.write(str(vessel_data[2])+" m/s\n")
+            result_file.write("Initial longitude: ")
+            result_file.write(str(vessel_data[3])+" deg\n")
+            result_file.write("Vessel label: ")
+            result_file.write(str(vessel_data[4])+"\n")
+            result_file.write("Vessel color: ")
+            result_file.write(str(vessel_data[5])+"\n")
+            result_file.write("Initially orbiting body #: ")
+            result_file.write(str(vessel_data[6])+"\n\n")
+
+            # parent body inputs
+            result_file.write("Parent body existence: ")
+            result_file.write(str(body_a_data[0])+"\n")
+            result_file.write("Parent body mass: ")
+            result_file.write(str(body_a_data[1])+" kg\n")
+            result_file.write("Parent body radius: ")
+            result_file.write(str(body_a_data[2])+" m\n")
+            result_file.write("Parent body name: ")
+            result_file.write(str(body_a_data[3])+"\n")
+            result_file.write("Parent body color: ")
+            result_file.write(str(body_a_data[4])+"\n\n")
+
+            # body_b inputs
+            result_file.write("Body B existence: ")
+            result_file.write(str(body_b_data[0])+"\n")
+            result_file.write("Body B mass: ")
+            result_file.write(str(body_b_data[1])+" kg\n")
+            result_file.write("Body B radius: ")
+            result_file.write(str(body_b_data[2])+" m\n")
+            result_file.write("Body B init. altitude: ")
+            result_file.write(str(body_b_data[3])+" m\n")
+            result_file.write("Body B init. tangential vel.: ")
+            result_file.write(str(body_b_data[4])+" m/s\n")
+            result_file.write("Body B init. radial vel.: ")
+            result_file.write(str(body_b_data[5])+" m/s\n")
+            result_file.write("Body B init. long.: ")
+            result_file.write(str(body_b_data[6])+" deg\n")
+            result_file.write("Body B name: ")
+            result_file.write(str(body_b_data[7])+"\n")
+            result_file.write("Body B color: ")
+            result_file.write(str(body_b_data[8])+"\n\n")
+
+            # body_c inputs
+            result_file.write("Body C existence: ")
+            result_file.write(str(body_c_data[0])+"\n")
+            result_file.write("Body C mass: ")
+            result_file.write(str(body_c_data[1])+" kg\n")
+            result_file.write("Body C radius: ")
+            result_file.write(str(body_c_data[2])+" m\n")
+            result_file.write("Body C init. altitude: ")
+            result_file.write(str(body_c_data[3])+" m\n")
+            result_file.write("Body C init. tangential vel.: ")
+            result_file.write(str(body_c_data[4])+" m/s\n")
+            result_file.write("Body C init. radial vel.: ")
+            result_file.write(str(body_c_data[5])+" m/s\n")
+            result_file.write("Body C init. long.: ")
+            result_file.write(str(body_c_data[6])+" deg\n")
+            result_file.write("Body C name: ")
+            result_file.write(str(body_c_data[7])+"\n")
+            result_file.write("Body C color: ")
+            result_file.write(str(body_c_data[8])+"\n\n")
+            
+            result_file.close()
+            log_info("Inputs saved in " + exportFile, logger = "Logs")
+        except:
+            log_error("TXT export failed.", logger = "Logs")  
+        
+    else:
+        log_warning("No filename provided. Export aborted.", logger = "Logs")
+    set_value(name="progress", value=1)
+    hide_item("progress_bar")
+    log_info("Done.", logger = "Logs")
+    set_value(name="progress", value=0)
+    setProgressBarOverlay("")
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #                SIMULATION SETUP
@@ -185,7 +242,7 @@ def simulateOrbit():
             self.pos_y = 0
             self.vel_x = 0
             self.vel_y = 0
-            self_alt = 0
+            self.alt = 0
             self.vel_tgn = 0
             self.vel_rad = 0
             self.long = 0
@@ -380,6 +437,9 @@ def simulateOrbit():
     calc_run_number += 1
     log_info(message = "Run [" + str(calc_run_number) + "]: Simulating trajectory...", logger = "Logs")
 
+    global last_run_inputs
+    last_run_inputs = []
+
     # set vessel values
     vessel_a = vessel()
     vessel_a.set_alt(float(get_value("alt_init_field")))
@@ -388,6 +448,9 @@ def simulateOrbit():
     vessel_a.set_long(float(get_value("long_init_field")))
     vessel_a.set_label(str(get_value("vessel_name")))
     vessel_a.set_color(get_value("vessel_color_edit"))
+
+    # save simulation inputs for export
+    last_run_inputs.append([vessel_a.get_alt(), vessel_a.get_vel_tgn(), vessel_a.get_vel_rad(), vessel_a.get_long(), vessel_a.get_label(), vessel_a.get_color()])
     
     # create bodies
     body_a = body()
@@ -403,6 +466,8 @@ def simulateOrbit():
     body_a.set_label(str(get_value("parent_name")))
     body_a.set_color(get_value("parent_color_edit"))
 
+    last_run_inputs.append([body_a.does_exist(), body_a.get_mass(), body_a.get_radius(), body_a.get_label(), body_a.get_color()])
+
     # moon 1
     body_b.set_exists(get_value("moon1_check"))
     if body_b.does_exist():
@@ -415,6 +480,8 @@ def simulateOrbit():
         body_b.set_label(str(get_value("moon1_name")))
         body_b.set_color(get_value("moon1_color_edit"))
 
+    last_run_inputs.append([body_b.does_exist(), body_b.get_mass(), body_b.get_radius(), body_b.get_alt(), body_b.get_vel_tgn(), body_b.get_vel_rad(), body_b.get_long(), body_b.get_label(), body_b.get_color()])
+
     body_c.set_exists(get_value("moon2_check"))
     if body_c.does_exist():
         body_c.set_mass(float(get_value("moon2_mass_field")) * 10**float((get_value("moon2_mass_magnitude_field"))))
@@ -426,7 +493,10 @@ def simulateOrbit():
         body_c.set_label(str(get_value("moon2_name")))
         body_c.set_color(get_value("moon2_color_edit"))
 
+    last_run_inputs.append([body_c.does_exist(), body_c.get_mass(), body_c.get_radius(), body_c.get_alt(), body_c.get_vel_tgn(), body_c.get_vel_rad(), body_c.get_long(), body_c.get_label(), body_c.get_color()])
+
     orbit_init = int(get_value("init_orbiting_body_field"))
+    last_run_inputs[0].append(orbit_init)
 
     if orbit_init == 0:
         vessel_a.set_orbiting(body_a)
@@ -437,20 +507,6 @@ def simulateOrbit():
 
     # global simulation inputs
     time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
-    
-##            
-##    except:
-##        log_error("Input error. Make sure all design parameters are float values.", logger = "Logs")
-##        return
-
-##    # save these values in global scope, in case we want to export
-##    global last_alt_init, last_vel_tgn_init, last_vel_rad_init, last_time_increment, last_body_radius, last_body_mass
-##    last_alt_init = alt_init
-##    last_vel_tgn_init = vel_tgn_init
-##    last_vel_rad_init = vel_rad_init
-##    last_body_mass = body_mass
-##    last_body_radius = body_radius
-##    last_time_increment = time_increment
 
 ##    log_info("Inputs:\n" +
 ##             "Initial Alt.: " + str(alt_init) + " m\n"
@@ -609,6 +665,11 @@ def simulateOrbit():
                     obj.update_vel(body.get_grav_pull(get_dist(obj, body)) * abs(math.cos(math.atan((obj.get_pos()[1] - body.get_pos()[1])/(obj.get_pos()[0] - body.get_pos()[0])))) * sign(body.get_pos()[0] - obj.get_pos()[0]),
                                    body.get_grav_pull(get_dist(obj, body)) * abs(math.sin(math.atan((obj.get_pos()[1] - body.get_pos()[1])/(obj.get_pos()[0] - body.get_pos()[0])))) * sign(body.get_pos()[1] - obj.get_pos()[1]),
                                    time_increment)
+                    
+                # set sphere of influence to the body that applies most gravity on the vessel
+                if type(obj).__name__ == "vessel":
+                    if body.get_grav_pull(get_dist(obj, body)) > obj.get_orbiting().get_grav_pull(get_dist(obj, obj.get_orbiting())):
+                        obj.set_orbiting(body)
 
         # update positions
         for obj in objects:
@@ -622,9 +683,10 @@ def simulateOrbit():
         t.sleep((time_increment-cycle_dt)*(1/speed_scale))
         
         # update displays
-        set_value(name="alt", value= (get_dist(vessel_a, vessel_a.get_orbiting())))
-        set_value(name="vel", value= ((vessel_a.get_vel()[0]**2 + vessel_a.get_vel()[1]**2)**(0.5)))
+        set_value(name="alt", value= (get_dist(vessel_a, vessel_a.get_orbiting())) - vessel_a.get_orbiting().get_radius())
+        set_value(name="vel", value= (((vessel_a.get_vel()[0] - vessel_a.get_orbiting().get_vel()[0])**2 + (vessel_a.get_vel()[1] - vessel_a.get_orbiting().get_vel()[1])**2)**(0.5)))
         set_value(name="time", value=time)
+        set_value(name="soi", value=vessel_a.get_orbiting().get_label())
 
         if get_value("realtime_graph"):
             add_line_series(name="Altitude", plot="alt_plot",x=time_list, y=alt_list)
@@ -682,10 +744,10 @@ def setScaleLimits():
 with window("File I/O", width=1260, height=60, no_close=True, no_move=True):
     set_window_pos("File I/O", 10, 10)
     add_input_text(name="filepath_field", label="Filepath", tip = "If the file is in the same directory with the script, you don't need\nto write the full path.")
-##    add_same_line()
-##    add_button("Import", callback=importFile)
-##    add_same_line()
-##    add_button("Export", callback=exportFile)
+    add_same_line()
+    add_button("Import", callback=importFile)
+    add_same_line()
+    add_button("Export", callback=exportFile)
     add_same_line()
     add_progress_bar(name="progress_bar", source="progress", width=200, overlay="progress_overlay")
     hide_item("progress_bar")
@@ -830,10 +892,13 @@ with window("Output", width=700, height=560, no_close=True):
 
     # VISUALIZER
 
-    add_input_text(name="alt_output", label="Dist from parent center (m)", source="alt", readonly=True, enabled=False, parent="vis_tab")
+    add_input_text(name="soi_output", label="SoI", source="soi", readonly=True, enabled=False, parent="vis_tab", width=300)
+    add_same_line(parent="vis_tab")
+    add_input_text(name="time_output", label="Time (s)", source="time", readonly=True, enabled=False, parent="vis_tab", width=150)
+    add_input_text(name="alt_output", label="Altitude (m)", source="alt", readonly=True, enabled=False, parent="vis_tab", width=200)
+    add_same_line(parent="vis_tab")
+    add_input_text(name="vel_output", label="Velocity (m/s)", source="vel", readonly=True, enabled=False, parent="vis_tab", width=200)
     #add_input_text(name="dist_output", label="Dist. From Body Center (m)", source="dist", readonly=True, enabled=False, parent="vis_tab")
-    add_input_text(name="vel_output", label="Velocity (m/s)", source="vel", readonly=True, enabled=False, parent="vis_tab")
-    add_input_text(name="time_output", label="Time (s)", source="time", readonly=True, enabled=False, parent="vis_tab")
 
     add_input_text(name="scale_min_field", label="Scale Min", parent="vis_tab", default_value="1000.0", width=100, callback=setScaleLimits)
     add_same_line(parent="vis_tab")
