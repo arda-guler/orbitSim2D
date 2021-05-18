@@ -508,12 +508,13 @@ def simulateOrbit():
     # global simulation inputs
     time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
 
-##    log_info("Inputs:\n" +
-##             "Initial Alt.: " + str(alt_init) + " m\n"
-##             "Init. Tgn. Vel.:" + str(vel_tgn_init) + " m/s\n"
-##             "Init. Rad. Vel.:" + str(vel_rad_init) + " m/s\n"
-##             "Body Mass:" + str(body_mass) + " kg\n"
-##             "Time Increment: " + str(time_increment) + " s\n", logger = "Logs")
+    log_info("Inputs:\n" +          
+             "Vessel Init. Alt.: " + str(vessel_a.get_alt()) + " m\n"
+             "Vessel Init. Tgn. Vel.: " + str(vessel_a.get_vel_tgn()) + " m/s\n"
+             "Vessel Init. Rad. Vel.: " + str(vessel_a.get_vel_rad()) + " m/s\n"
+             "Vessel Init. Long.: " + str(vessel_a.get_long()) + " deg\n"
+             "Vessel Name: " + str(vessel_a.get_label()) + "\n"
+             "Vessel Color: " + str(vessel_a.get_color()) + "\n\n", logger = "Logs")
 
     # Calculation sub-functions
 
@@ -596,8 +597,7 @@ def simulateOrbit():
         cycle_num = cycle_num + 1
         cycle_start = t.perf_counter()
 
-        if type(cycle_num / 100) == int:
-            time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
+        time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
             
         setSimSpeedLimits()
         setScaleLimits()
@@ -680,7 +680,10 @@ def simulateOrbit():
         # adjust simulation speed
         speed_scale = get_value("sim_speed_field")
         cycle_dt = t.perf_counter() - cycle_start
-        t.sleep((time_increment-cycle_dt)*(1/speed_scale))
+        try:
+            t.sleep((time_increment-cycle_dt)*(1/speed_scale))
+        except:
+            pass
         
         # update displays
         set_value(name="alt", value= (get_dist(vessel_a, vessel_a.get_orbiting())) - vessel_a.get_orbiting().get_radius())
