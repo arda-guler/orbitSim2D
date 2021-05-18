@@ -1,6 +1,6 @@
 #   2D N-BODY ORBIT SIMULATOR
 
-version = "0.4.0"
+version = "0.4.1"
 
 from dearpygui.core import *
 from dearpygui.simple import *
