@@ -12,7 +12,7 @@ import numpy as npy
 
 #set initial window configuration (purely cosmetic)
 set_main_window_size(1300, 700)
-set_main_window_title("N-body Simulator 2D | MRS")
+set_main_window_title("N-body Simulator 2D")
 set_theme("Dark")
 
 calc_run_number = 0
