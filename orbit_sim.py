@@ -1,6 +1,6 @@
 #   2D N-BODY ORBIT SIMULATOR
 
-version = "0.5.1"
+version = "0.5.1b"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -902,8 +902,7 @@ def simulateOrbit():
 
         # update positions
         for obj in objects:
-            if obj.does_exist():
-                obj.update_pos(obj.get_vel()[0], obj.get_vel()[1], time_increment)
+            obj.update_pos(obj.get_vel()[0], obj.get_vel()[1], time_increment)
         # - - - -   - - - -   - - - -   - - - -   - - - -
 
         # adjust simulation speed
