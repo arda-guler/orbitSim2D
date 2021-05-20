@@ -1,6 +1,6 @@
 #   2D N-BODY ORBIT SIMULATOR
 
-version = "0.5.0"
+version = "0.5.1"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -348,14 +348,13 @@ def saveVesselSetup():
     new_vessel.set_long_init(float(get_value("long_init_field")))
     new_vessel.set_label(str(get_value("vessel_name")))
     new_vessel.set_color(get_value("vessel_color_edit"))
-    
-    vessels.append(new_vessel)
-    objects.append(new_vessel)
 
-    set_value(name="vessels", value=vessels)
-    set_value(name="objects", value=objects)
-
-    add_menu_item(name=new_vessel.get_label(), parent="vessel_menu", callback=lockView)
+    if not already_exists:
+        vessels.append(new_vessel)
+        objects.append(new_vessel)
+        set_value(name="vessels", value=vessels)
+        set_value(name="objects", value=objects)
+        add_menu_item(name=new_vessel.get_label(), parent="vessel_menu", callback=lockView)
 
 def deleteVessel():
     
@@ -453,13 +452,11 @@ def saveBodySetup():
     new_body.set_label(str(get_value("moon_name")))
     new_body.set_color(get_value("moon_color_edit"))
 
-    bodies.append(new_body)
-    objects.append(new_body)
-
-    set_value(name="bodies", value=bodies)
-    set_value(name="objects", value=objects)
-
     if not already_exists:
+        bodies.append(new_body)
+        objects.append(new_body)
+        set_value(name="bodies", value=bodies)
+        set_value(name="objects", value=objects)
         add_menu_item(name=new_body.get_label(), parent="moon_menu", callback=lockView)
 
 def deleteBody():
