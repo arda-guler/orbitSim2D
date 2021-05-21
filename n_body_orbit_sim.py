@@ -1,6 +1,6 @@
 #   2D N-BODY ORBIT SIMULATOR
 
-version = "0.5.1b"
+version = "0.5.2"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -178,6 +178,7 @@ class vessel ():
         self.vel_y = 0
         self.vel_x = 0
         self.orbiting = None
+        self.orbiting_init = None
         self.label = "Vessel"
         self.color = [200,0,0,255]
         self.x_list = []
@@ -330,12 +331,12 @@ def saveVesselSetup():
     orbit_init = (get_value("init_orbiting_body_field"))
     reference_found = False
 
-    if not orbit_init == "" or not orbit_init == None or not orbit_init:
-        for body in bodies:
-            if body.get_label() == orbit_init:
-                new_vessel.set_orbiting_init(body)
-                reference_found = True
-    else:
+    for body in bodies:
+        if body.get_label() == orbit_init:
+            new_vessel.set_orbiting_init(body)
+            reference_found = True
+
+    if not orbit_init or orbit_init == "":
         reference_found = True
 
     if not reference_found:
@@ -748,7 +749,7 @@ def simulateOrbit():
         vessel.set_vel_rad(vessel.get_vel_rad_init())
         
         # vessel is placed with respect to a reference body
-        if not vessel.get_orbiting == None:
+        if not vessel.get_orbiting() == None:
             vessel.set_pos(sph2cart(vessel.get_alt() + vessel.get_orbiting().get_radius(), vessel.get_long())[0] + vessel.get_orbiting().get_pos()[0],
                            sph2cart(vessel.get_alt() + vessel.get_orbiting().get_radius(), vessel.get_long())[1]+ vessel.get_orbiting().get_pos()[1])
 
@@ -863,8 +864,7 @@ def simulateOrbit():
 ##        vel_list.append((vessel_a.get_vel()[0]**2 + vessel_a.get_vel()[1]**2)**(0.5))
 
         for obj in objects:
-            if obj.does_exist():
-                obj.update_traj()
+            obj.update_traj()
 
         # - - - - ITERATIVE PHYSICS HAPPEN HERE - - - -
         # increment time step
@@ -897,7 +897,7 @@ def simulateOrbit():
                     
                 # set sphere of influence to the body that applies most gravity on the vessel
                 if type(obj).__name__ == "vessel":
-                    if body.get_grav_pull(get_dist(obj, body)) > obj.get_orbiting().get_grav_pull(get_dist(obj, obj.get_orbiting())):
+                    if body.get_orbiting_init() and body.get_grav_pull(get_dist(obj, body)) > obj.get_orbiting().get_grav_pull(get_dist(obj, obj.get_orbiting())):
                         obj.set_orbiting(body)
 
         # update positions
@@ -922,8 +922,7 @@ def simulateOrbit():
         if get_value("realtime_graph"):
 
             for obj in objects:
-                if obj.does_exist():
-                    add_line_series(name=str(obj.get_label() + " Traj"), plot="traj_plot", x=obj.get_traj()[0], y=obj.get_traj()[1], color=obj.get_color())
+                add_line_series(name=str(obj.get_label() + " Traj"), plot="traj_plot", x=obj.get_traj()[0], y=obj.get_traj()[1], color=obj.get_color())
 
         if get_value("end_flag"):
             disableEndFlag()
