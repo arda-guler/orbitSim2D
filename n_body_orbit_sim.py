@@ -1,6 +1,6 @@
 #   2D N-BODY ORBIT SIMULATOR
 
-version = "0.5.2"
+version = "0.5.3"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -24,6 +24,8 @@ set_value(name="progress", value=0)
 vessels = []
 bodies = []
 objects = []
+target = None
+target_id = 0
 
 set_value(name="vessels", value=[])
 set_value(name="bodies", value=[])
@@ -357,6 +359,9 @@ def saveVesselSetup():
         set_value(name="objects", value=objects)
         add_menu_item(name=new_vessel.get_label(), parent="vessel_menu", callback=lockView)
 
+    initVessels()
+    updateVisualizer()
+
 def deleteVessel():
     
     global vessels, objects
@@ -372,11 +377,14 @@ def deleteVessel():
             set_value(name="long_init_field", value="VESSEL DELETED.")
             set_value(name="init_orbiting_body_field", value="VESSEL DELETED.")
             hide_item(vessel.get_label())
+            vessel.clear_traj_history()
+            vessels.remove(vessel)
             del vessel
 
     for obj in objects:
         if get_value("vessel_name") == obj.get_label():
             del obj
+            updateVisualizer()
 
     if not vessel_found:
         set_value(name="alt_init_field", value="VESSEL NOT FOUND.")
@@ -460,6 +468,9 @@ def saveBodySetup():
         set_value(name="objects", value=objects)
         add_menu_item(name=new_body.get_label(), parent="moon_menu", callback=lockView)
 
+    initBodies()
+    updateVisualizer()
+
 def deleteBody():
     
     global bodies, objects
@@ -478,11 +489,14 @@ def deleteBody():
             set_value(name="moon_vel_rad_init_field", value="BODY DELETED.")
             set_value(name="moon_long_init_field", value="BODY DELETED.")
             hide_item(body.get_label())
+            body.clear_traj_history()
+            bodies.remove(body)
             del body
 
     for obj in objects:
         if get_value("moon_name") == obj.get_label():
             del obj
+            updateVisualizer()
 
     if not body_found:
         set_value(name="moon_mass_field", value="BODY NOT FOUND.")
@@ -659,64 +673,87 @@ def exportFile():
 def lockView(sender, data):
     set_value(name="view_target", value=str(sender))
 
+def prevTarget():
+    
+    global objects, target, target_id
+    
+    if len(objects) < 1:
+        set_value(name="target_name", value="")
+        return
+    
+    else:
+        if target_id > 0:
+            target_id = target_id - 1
+        else:
+            target_id = len(objects) - 1
+            
+        target = objects[target_id]
+        set_value(name="target_name", value=target.get_label())
+
+    updateVisualizer()
+
+
+def nextTarget():
+    
+    global objects, target, target_id
+
+    if len(objects) < 1:
+        set_value(name="target_name", value="")
+        return
+    
+    else:
+        if target_id < len(objects) - 1:
+            target_id = target_id + 1
+        else:
+            target_id = 0
+            
+        target = objects[target_id]
+        set_value(name="target_name", value=target.get_label())
+
+    updateVisualizer()
+
+def updateVisualizer():
+
+    global bodies, vessels, objects, target
+    
+    vis_scale = float(get_value("vis_scale_field"))
+    clear_drawing("vis_canvas")
+
+    if get_value("lock_on_target") and not target == None and len(objects) > 1:    
+        for vessel in vessels:
+            draw_rectangle(drawing="vis_canvas", pmin=space2screen((vessel.get_pos()[0]-target.get_pos()[0])/vis_scale-3,(vessel.get_pos()[1]-target.get_pos()[1])/vis_scale-3,680,380), pmax=space2screen((vessel.get_pos()[0]-target.get_pos()[0])/vis_scale+3,(vessel.get_pos()[1]-target.get_pos()[1])/vis_scale+3,680,380), color=vessel.get_color())
+            if get_value("display_labels"):
+                draw_text(drawing="vis_canvas", pos=space2screen((vessel.get_pos()[0]-target.get_pos()[0])/vis_scale+6, (vessel.get_pos()[1]-target.get_pos()[1])/vis_scale+6, 680, 380), text=vessel.get_label(), size=12, color=vessel.get_color())
+
+        for body in bodies:
+            draw_circle(drawing="vis_canvas", center=space2screen((body.get_pos()[0]-target.get_pos()[0])/vis_scale,(body.get_pos()[1]-target.get_pos()[1])/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=body.get_color())
+            if get_value("display_labels"):
+                draw_text(drawing="vis_canvas", pos=space2screen((body.get_pos()[0]-target.get_pos()[0])/vis_scale+3,(body.get_pos()[1]-target.get_pos()[1])/vis_scale+3,680,380), text=body.get_label() , size=14, color=body.get_color())
+        
+    else:
+        for body in bodies:
+            draw_circle(drawing="vis_canvas", center=space2screen(body.get_pos()[0]/vis_scale,body.get_pos()[1]/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=body.get_color())
+            if get_value("display_labels"):
+                draw_text(drawing="vis_canvas", pos=space2screen(body.get_pos()[0]/vis_scale+3,body.get_pos()[1]/vis_scale+3,680,380), size=14, text=body.get_label(), color=body.get_color())
+
+        for vessel in vessels:
+            draw_rectangle(drawing="vis_canvas", pmin=space2screen(vessel.get_pos()[0]/vis_scale-3,vessel.get_pos()[1]/vis_scale-3,680,380), pmax=space2screen(vessel.get_pos()[0]/vis_scale+3,vessel.get_pos()[1]/vis_scale+3,680,380), color=vessel.get_color())
+            if get_value("display_labels"):
+                draw_text(drawing="vis_canvas", pos=space2screen(vessel.get_pos()[0]/vis_scale+6, vessel.get_pos()[1]/vis_scale+6, 680, 380), size=12, text=vessel.get_label(), color=vessel.get_color())
+
+        # --- --- --- --- --- ---
+
+
 def disableEndFlag():
     internal_dpg.configure_item("end_flag", enabled=False)
 
 def enableEndFlag():
     internal_dpg.configure_item("end_flag", enabled=True)
 
-def simulateOrbit():
-
-    global calc_run_number
-    calc_run_number += 1
-    log_info(message = "Run [" + str(calc_run_number) + "]: Simulating trajectory...", logger = "Logs")
-
-    global last_run_inputs
-    last_run_inputs = []
-
-    global vessels, bodies, objects
-
-    # global simulation inputs
-    time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
-
-    # Calculation sub-functions
-
-    def clamp(num, min_value, max_value):
-        return max(min(num, max_value), min_value)
-
-    def sign(x): return 1 if x >= 0 else -1
-
-    # takes longitude (in degrees) and radial distance, gives relative x and y position
-    def sph2cart(r, long_theta):
-        phi = long_theta + 90
-        phi = math.radians(phi)
-        
-        x = r * math.cos(phi)
-        y = r * math.sin(phi)
-
-        return [x, y]
-
-    def get_dist(obj1, obj2):
-        dist = ((obj1.get_pos()[0] - obj2.get_pos()[0])**2 + (obj1.get_pos()[1] - obj2.get_pos()[1])**2)**(0.5)
-        return float(dist)
-         
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    #                   RUN SIMULATION
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    #set initial values
-
-    time = 0
-
-    for obj in objects:
-        try:
-            obj.get_orbiting_init()
-        except:
-            print("Ref fail!")
-            return
-        
-    # initiate bodies
+def initBodies():
+    
+    global bodies
+    
     for body in bodies:
 
         # set values to sim setup inputs
@@ -738,7 +775,10 @@ def simulateOrbit():
             body.set_vel(body.get_vel_rad() * math.cos(math.radians(body.get_long() + 90)) + body.get_vel_tgn() * math.cos(math.radians(body.get_long() + 180)),
                          body.get_vel_rad() * math.sin(math.radians(body.get_long() + 90)) + body.get_vel_tgn() * math.sin(math.radians(body.get_long() + 180)))
 
-    # initiate vessels
+def initVessels():
+    
+    global vessels
+    
     for vessel in vessels:
 
         # set values to sim setup inputs
@@ -749,7 +789,7 @@ def simulateOrbit():
         vessel.set_vel_rad(vessel.get_vel_rad_init())
         
         # vessel is placed with respect to a reference body
-        if not vessel.get_orbiting() == None:
+        if not vessel.get_orbiting_init() == None:
             vessel.set_pos(sph2cart(vessel.get_alt() + vessel.get_orbiting().get_radius(), vessel.get_long())[0] + vessel.get_orbiting().get_pos()[0],
                            sph2cart(vessel.get_alt() + vessel.get_orbiting().get_radius(), vessel.get_long())[1]+ vessel.get_orbiting().get_pos()[1])
 
@@ -762,6 +802,47 @@ def simulateOrbit():
 
             vessel.set_vel(vessel.get_vel_rad() * math.cos(math.radians(vessel.get_long() + 90)) + vessel.get_vel_tgn() * math.cos(math.radians(vessel.get_long() + 180)),
                            vessel.get_vel_rad() * math.sin(math.radians(vessel.get_long() + 90)) + vessel.get_vel_tgn() * math.sin(math.radians(vessel.get_long() + 180)))
+
+# Mathematical sub-functions
+
+def clamp(num, min_value, max_value):
+    return max(min(num, max_value), min_value)
+
+def sign(x): return 1 if x >= 0 else -1
+
+# takes longitude (in degrees) and radial distance, gives relative x and y position
+def sph2cart(r, long_theta):
+    phi = long_theta + 90
+    phi = math.radians(phi)
+    
+    x = r * math.cos(phi)
+    y = r * math.sin(phi)
+
+    return [x, y]
+
+def get_dist(obj1, obj2):
+    dist = ((obj1.get_pos()[0] - obj2.get_pos()[0])**2 + (obj1.get_pos()[1] - obj2.get_pos()[1])**2)**(0.5)
+    return float(dist)
+
+def simulateOrbit():
+
+    global calc_run_number
+    calc_run_number += 1
+    log_info(message = "Run [" + str(calc_run_number) + "]: Simulating trajectory...", logger = "Logs")
+
+    global last_run_inputs
+    last_run_inputs = []
+
+    global vessels, bodies, objects
+
+    # global simulation inputs
+    time_increment = float(get_value("sim_speed_field")/get_value("sim_precision_field"))
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    #                   RUN SIMULATION
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    time = 0
 
     # reset trajectory data for new simulation
     for obj in objects:
@@ -791,13 +872,6 @@ def simulateOrbit():
                 # both coords same, no need to update velocity for this cycle
                 else:
                     pass
-                            
-        
-##    time_list = []
-##    alt_list = []
-##    vel_list = []
-##    vel_rad_list = []
-##    vel_tgn_list = []
 
     show_item("progress_bar")
     progress_loop = 0
@@ -817,38 +891,7 @@ def simulateOrbit():
         setSimSpeedLimits()
         setScaleLimits()
 
-        # --- update visualizer ---
-
-        vis_scale = float(get_value("vis_scale_field"))
-        clear_drawing("vis_canvas")
-
-##        if get_value("lock_on_target") and get_value("view_target"):
-##            for obj in objects:
-##                if obj.get_label() == get_value("view_target"):
-##                    target = obj
-##                    
-##            for vessel in vessels:
-##                draw_rectangle(drawing="vis_canvas", pmin=space2screen((vessel.get_pos()[0]-target.get_pos()[0])/vis_scale-3,(vessel.get_pos()[1]-target.get_pos()[1])/vis_scale-3,680,380), pmax=space2screen((vessel.get_pos()[0]-target.get_pos()[0])/vis_scale+3,(vessel.get_pos()[1]-target.get_pos()[1])/vis_scale+3,680,380), color=vessel.get_color())
-##                if get_value("display_labels"):
-##                    draw_text(drawing="vis_canvas", pos=space2screen((vessel.get_pos()[0]-target.get_pos()[0])/vis_scale+6, (vessel.get_pos()[1]-target.get_pos()[1])/vis_scale+6, 680, 380), text=vessel.get_label(), size=12, color=vessel.get_color())
-##
-##            for body in bodies:
-##                draw_circle(drawing="vis_canvas", center=space2screen((body.get_pos()[0]-target.get_pos()[0])/vis_scale,(body.get_pos()[1]-target.get_pos()[1])/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=body.get_color())
-##                if get_value("display_labels"):
-##                    draw_text(drawing="vis_canvas", pos=space2screen((body.get_pos()[0]-target.get_pos()[0])/vis_scale+3,(body.get_pos()[1]-target.get_pos()[1])/vis_scale+3,680,380), text=body.get_label() , size=14, color=body.get_color())
-##            
-##        else:
-        for body in bodies:
-            draw_circle(drawing="vis_canvas", center=space2screen(body.get_pos()[0]/vis_scale,body.get_pos()[1]/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=body.get_color())
-            if get_value("display_labels"):
-                draw_text(drawing="vis_canvas", pos=space2screen(body.get_pos()[0]/vis_scale+3,body.get_pos()[1]/vis_scale+3,680,380), size=14, text=body.get_label(), color=body.get_color())
-
-        for vessel in vessels:
-            draw_rectangle(drawing="vis_canvas", pmin=space2screen(vessel.get_pos()[0]/vis_scale-3,vessel.get_pos()[1]/vis_scale-3,680,380), pmax=space2screen(vessel.get_pos()[0]/vis_scale+3,vessel.get_pos()[1]/vis_scale+3,680,380), color=vessel.get_color())
-            if get_value("display_labels"):
-                draw_text(drawing="vis_canvas", pos=space2screen(vessel.get_pos()[0]/vis_scale+6, vessel.get_pos()[1]/vis_scale+6, 680, 380), size=12, text=vessel.get_label(), color=vessel.get_color())
-
-        # --- --- --- --- --- ---
+        updateVisualizer()
 
         if progress_loop < 1.0:
             progress_loop = progress_loop + 0.01
@@ -857,11 +900,6 @@ def simulateOrbit():
 
         set_value(name="progress", value=progress_loop)
         setProgressBarOverlay("Simulation running...")
-
-##        # update lists
-##        time_list.append(time)
-##        alt_list.append(vessel_a.get_alt())
-##        vel_list.append((vessel_a.get_vel()[0]**2 + vessel_a.get_vel()[1]**2)**(0.5))
 
         for obj in objects:
             obj.update_traj()
@@ -914,10 +952,15 @@ def simulateOrbit():
             pass
         
         # update displays
-##        set_value(name="alt", value= (get_dist(vessel_a, vessel_a.get_orbiting())) - vessel_a.get_orbiting().get_radius())
-##        set_value(name="vel", value= (((vessel_a.get_vel()[0] - vessel_a.get_orbiting().get_vel()[0])**2 + (vessel_a.get_vel()[1] - vessel_a.get_orbiting().get_vel()[1])**2)**(0.5)))
-##        set_value(name="time", value=time)
-##        set_value(name="soi", value=vessel_a.get_orbiting().get_label())
+        set_value(name="time", value=time)
+        if type(target).__name__ == "vessel":
+            set_value(name="alt", value= (get_dist(target, target.get_orbiting())) - target.get_orbiting().get_radius())
+            set_value(name="vel", value= (((target.get_vel()[0] - target.get_orbiting().get_vel()[0])**2 + (target.get_vel()[1] - target.get_orbiting().get_vel()[1])**2)**(0.5)))
+            set_value(name="soi", value=target.get_orbiting().get_label())
+        elif type(target).__name__ == "body":
+            set_value(name="alt", value= (get_dist(target, target.get_orbiting_init())) - target.get_orbiting_init().get_radius())
+            set_value(name="vel", value= (((target.get_vel()[0] - target.get_orbiting_init().get_vel()[0])**2 + (target.get_vel()[1] - target.get_orbiting_init().get_vel()[1])**2)**(0.5)))
+            set_value(name="soi", value=target.get_orbiting_init().get_label())
 
         if get_value("realtime_graph"):
 
@@ -933,8 +976,7 @@ def simulateOrbit():
     setProgressBarOverlay("Updating graphs...")
 
     for obj in objects:
-        if obj.does_exist():
-            add_line_series(name=str(obj.get_label() + " Traj"), plot="traj_plot", x=obj.get_traj()[0], y=obj.get_traj()[1], color=obj.get_color())
+        add_line_series(name=str(obj.get_label() + " Traj"), plot="traj_plot", x=obj.get_traj()[0], y=obj.get_traj()[1], color=obj.get_color())
 
     set_value(name="progress", value=0)
     hide_item("progress_bar")
@@ -962,6 +1004,7 @@ def setSimSpeedLimits():
 
 def setScaleLimits():
     internal_dpg.configure_item("vis_scale_field", min_value=float(get_value("scale_min_field")), max_value=float(get_value("scale_max_field")))
+    updateVisualizer()
 
 #FILE OPERATIONS BAR
 with window("File I/O", width=1260, height=60, no_close=True, no_move=True):
@@ -1078,6 +1121,12 @@ with window("Output", width=700, height=560, no_close=True):
 
     # VISUALIZER
 
+    add_button(name="prev_target_button", label="<-", parent="vis_tab", callback=prevTarget)
+    add_same_line(parent="vis_tab")
+    add_input_text(name="selected_target_field", label="", parent="vis_tab", width=500, source="target_name", enabled=False)
+    add_same_line(parent="vis_tab")
+    add_button(name="next_target_button", label="->", parent="vis_tab", callback=nextTarget)
+
     add_input_text(name="soi_output", label="Ref. Frame", source="soi", readonly=True, enabled=False, parent="vis_tab", width=300)
     add_same_line(parent="vis_tab")
     add_input_text(name="time_output", label="Time (s)", source="time", readonly=True, enabled=False, parent="vis_tab", width=150)
@@ -1090,14 +1139,14 @@ with window("Output", width=700, height=560, no_close=True):
     add_same_line(parent="vis_tab")
     add_input_text(name="scale_max_field", label="Scale Max", parent="vis_tab", default_value="10000000.0", width=100, callback=setScaleLimits)
     add_same_line(parent="vis_tab")
-    add_checkbox(name="display_labels", label="Show Labels", parent="vis_tab")
+    add_checkbox(name="display_labels", label="Show Labels", parent="vis_tab", callback=updateVisualizer)
     
     add_slider_float(name="vis_scale_field", label="Scale (m/pixel)",
                      min_value=float(get_value("scale_min_field")), max_value=float(get_value("scale_max_field")), default_value=50000.0,
-                     clamped=True, parent="vis_tab", width=300)
+                     clamped=True, parent="vis_tab", width=300, callback=updateVisualizer)
 
     add_same_line(parent="vis_tab")
-    add_checkbox(name="lock_on_target", label="Lock View on Selected", parent="vis_tab", enabled=False, tip="Not implemented in this version.")
+    add_checkbox(name="lock_on_target", label="Lock View on Selected", parent="vis_tab", enabled=True)
 
     add_drawing("vis_canvas", parent="vis_tab", width=680, height=380)
     clear_drawing("vis_canvas")
