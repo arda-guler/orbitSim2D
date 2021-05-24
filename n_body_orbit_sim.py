@@ -1,6 +1,6 @@
 #   2D N-BODY ORBIT SIMULATOR
 
-version = "0.5.3"
+version = "0.5.4"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -508,6 +508,11 @@ def deleteBody():
         set_value(name="moon_vel_rad_init_field", value="BODY NOT FOUND.")
         set_value(name="moon_long_init_field", value="BODY NOT FOUND.")
 
+def resetSimulation():
+    initBodies()
+    initVessels()
+    updateVisualizer()
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #                 FILE IMPORT/EXPORT
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -953,11 +958,11 @@ def simulateOrbit():
         
         # update displays
         set_value(name="time", value=time)
-        if type(target).__name__ == "vessel":
+        if type(target).__name__ == "vessel" and target.get_orbiting():
             set_value(name="alt", value= (get_dist(target, target.get_orbiting())) - target.get_orbiting().get_radius())
             set_value(name="vel", value= (((target.get_vel()[0] - target.get_orbiting().get_vel()[0])**2 + (target.get_vel()[1] - target.get_orbiting().get_vel()[1])**2)**(0.5)))
             set_value(name="soi", value=target.get_orbiting().get_label())
-        elif type(target).__name__ == "body":
+        elif type(target).__name__ == "body" and target.get_orbiting_init():
             set_value(name="alt", value= (get_dist(target, target.get_orbiting_init())) - target.get_orbiting_init().get_radius())
             set_value(name="vel", value= (((target.get_vel()[0] - target.get_orbiting_init().get_vel()[0])**2 + (target.get_vel()[1] - target.get_orbiting_init().get_vel()[1])**2)**(0.5)))
             set_value(name="soi", value=target.get_orbiting_init().get_label())
@@ -1043,11 +1048,11 @@ with window("Input", width=550, height=360, no_close=True):
     add_input_text(name="vessel_name", label="Vessel Name", width=175, parent="vessel_input_tab")
     add_color_edit4(name="vessel_color_edit", label="Vessel Visualizer Color", default_value=[200,0,0,255], parent="vessel_input_tab")
     add_spacing(count=6, parent="vessel_input_tab")
-    add_input_text("init_orbiting_body_field", label="Init. Frame of Reference", width=175, parent="vessel_input_tab", tip="Leave blank to place relative to global frame.")
-    add_input_text(name = "alt_init_field", label = "Init. Altitude (m)", width=175, parent="vessel_input_tab")
-    add_input_text(name = "vel_tgn_init_field", label = "Init. Tangential Vel. (m/s)", width=175, parent="vessel_input_tab")
-    add_input_text(name = "vel_rad_init_field", label = "Init. Radial Vel. (m/s)", width=175, parent="vessel_input_tab")
-    add_input_text(name = "long_init_field", label = "Init. Longitude (degrees)", width=175, parent="vessel_input_tab", tip="Zero at 12 o'clock of orbited body, increases counterclockwise.")
+    add_input_text("init_orbiting_body_field", label="Initial Frame of Reference", width=175, parent="vessel_input_tab", tip="Leave blank to place relative to global frame.")
+    add_input_text(name = "alt_init_field", label = "Initial Altitude (m)", width=175, parent="vessel_input_tab")
+    add_input_text(name = "vel_tgn_init_field", label = "Initial Tangential Velocity (m/s)", width=175, parent="vessel_input_tab")
+    add_input_text(name = "vel_rad_init_field", label = "Initial Radial Velocity (m/s)", width=175, parent="vessel_input_tab")
+    add_input_text(name = "long_init_field", label = "Initial Longitude (degrees)", width=175, parent="vessel_input_tab", tip="Zero at 12 o'clock of orbited body, increases counterclockwise.")
     add_spacing(count=6, parent="vessel_input_tab")
     add_button("examine_vessel_button", label="Examine Setup", callback=examineVesselSetup, parent="vessel_input_tab")
     add_same_line(parent="vessel_input_tab")
@@ -1071,11 +1076,11 @@ with window("Input", width=550, height=360, no_close=True):
     add_same_line(parent="moon_input_tab")
     add_input_text(name = "moon_radius_magnitude_field", label = "Body Radius (m)", width=100, parent="moon_input_tab")
     add_spacing(count=6,parent="moon_input_tab")
-    add_input_text("moon_init_orbiting_body_field", label="Init. Frame of Reference", width=175, parent="moon_input_tab", tip="Leave blank to place relative to global frame.")
+    add_input_text("moon_init_orbiting_body_field", label="Initial Frame of Reference", width=175, parent="moon_input_tab", tip="Leave blank to place relative to global frame.")
     add_input_text(name = "moon_alt_init_field", label = "Initial Distance to Parent (m)", width=100, parent="moon_input_tab", tip="Between body centers.")
-    add_input_text(name = "moon_vel_tgn_init_field", label = "Init. Tangential Vel. (m/s)", width=100, parent="moon_input_tab", tip="Rel. to parent body.")
-    add_input_text(name = "moon_vel_rad_init_field", label = "Init. Radial Vel. (m/s)", width=100, parent="moon_input_tab", tip="Rel. to parent body.")
-    add_input_text(name = "moon_long_init_field", label = "Init. Longitude (degrees)", width=100, parent="moon_input_tab", tip="Zero at 12 o'clock of parent body, increases counterclockwise.")
+    add_input_text(name = "moon_vel_tgn_init_field", label = "Initial Tangential Velocity (m/s)", width=100, parent="moon_input_tab", tip="Rel. to parent body.")
+    add_input_text(name = "moon_vel_rad_init_field", label = "Initial Radial Velocity (m/s)", width=100, parent="moon_input_tab", tip="Rel. to parent body.")
+    add_input_text(name = "moon_long_init_field", label = "Initial Longitude (degrees)", width=100, parent="moon_input_tab", tip="Zero at 12 o'clock of parent body, increases counterclockwise.")
     add_spacing(count=6, parent="moon_input_tab")
     add_button("examine_moon_button", label="Examine Setup", callback=examineBodySetup, parent="moon_input_tab")
     add_same_line(parent="moon_input_tab")
@@ -1102,11 +1107,13 @@ with window("Input", width=550, height=360, no_close=True):
     add_slider_float(name="sim_precision_field", label="",
                      min_value=1, max_value=100.0, default_value=10.0,
                      clamped=True, width=500)
+    add_button(name="sim_reset_button", label="Reset Simulation", tip="Re-initializes all objects at their starting position and velocities.", callback=resetSimulation)
+    add_same_line()
     add_checkbox(name = "realtime_graph", label = "Update graphs every cycle", tip="Looks really cool but significantly reduces performance.")
     add_spacing(count=6)
-    add_button("Simulate Orbit", callback = simulateOrbit)
+    add_button("Run Simulation", callback = simulateOrbit)
     add_same_line()
-    add_checkbox(name="end_flag", label="End Simulation", tip="Raising this flag breaks out of the simulation loop in the next cycle.", enabled=False)
+    add_checkbox(name="end_flag", label="Pause Simulation", tip="Raising this flag breaks out of the simulation loop in the next cycle.", enabled=False)
 
 #OUTPUTS WINDOW
 with window("Output", width=700, height=560, no_close=True):
