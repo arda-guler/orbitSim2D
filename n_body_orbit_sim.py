@@ -1,6 +1,6 @@
 #   2D N-BODY ORBIT SIMULATOR
 
-version = "0.5.4"
+version = "0.6.0"
 
 from dearpygui.core import *
 from dearpygui.simple import *
@@ -8,7 +8,6 @@ import math
 import pandas as pd
 import time as t
 import scipy.constants as scp_const
-import numpy as npy
 
 #set initial window configuration (purely cosmetic)
 set_main_window_size(1300, 700)
@@ -517,80 +516,118 @@ def resetSimulation():
 #                 FILE IMPORT/EXPORT
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-def importFile():
-    pass
+def browseSaves():  
+    open_file_dialog(extensions=".txt", callback=selectSave)
 
-##    try:
-##        import_filepath = get_value("filepath_field")
-##        
-##        if not import_filepath[-4:] == ".txt":
-##            import_filepath = import_filepath + ".txt"
-##            
-##        log_info("Importing inputs from " + import_filepath, logger="Logs")
-##        import_file = open(import_filepath, "r")
-##    except:
-##        log_error("Import failed. Check filepath.", logger="Logs")
-##        return
-##
-##    try:
-##        import_lines = import_file.readlines()
-##        if not import_lines[0][18:-1] == version:
-##            log_warning("Save file version does not match software version. Import might fail.", logger="Logs")
-##
-##        # import vessel settings
-##        set_value(name="alt_init_field", value=import_lines[4][18:-3])
-##        set_value(name="vel_tgn_init_field", value=import_lines[5][29:-5])
-##        set_value(name="vel_rad_init_field", value=import_lines[6][25:-5])
-##        set_value(name="long_init_field", value=import_lines[7][19:-4])
-##        set_value(name="vessel_name", value=import_lines[8][14:-1])
-##        set_value(name="vessel_color_edit", value=list(import_lines[9][14:-1]))
-##        set_value(name="init_orbiting_body_field", value=int(import_lines[10][27:-1]))
-##
-##        # import parent body
-##        set_value(name="body_mass_field", value=import_lines[13][18:-4])
-##        set_value(name="body_mass_magnitude_field", value="0")
-##        set_value(name="body_radius_field", value=import_lines[14][20:-3])
-##        set_value(name="body_radius_magnitude_field", value="0")
-##        set_value(name="parent_name", value=import_lines[15][18:-1])
-##        set_value(name="parent_color_edit", value=list(import_lines[16][19:-1]))
-##
-##        # import body_b
-##        if import_lines[18][18:-1] == "True":
-##            set_value(name="moon1_check", value=True)
-##            set_value(name="moon1_mass_field", value=import_lines[19][13:-4])
-##            set_value(name="moon1_mass_magnitude_field", value="0")
-##            set_value(name="moon1_radius_field", value=import_lines[20][15:-3])
-##            set_value(name="moon1_radius_magnitude_field", value="0")
-##            set_value(name="moon1_alt_init_field", value=import_lines[21][23:-3])
-##            set_value(name="moon1_vel_tgn_init_field", value=import_lines[22][30:-5])
-##            set_value(name="moon1_vel_rad_init_field", value=import_lines[23][26:-5])
-##            set_value(name="moon1_long_init_field", value=import_lines[24][20:-5])
-##            set_value(name="moon1_name", value=import_lines[25][13:-1])
-##            set_value(name="moon1_color_edit", value=list(import_lines[26][14:-1]))
-##        else:
-##            set_value(name="moon1_check", value=False)
-##
-##        # import body_c
-##        if import_lines[28][18:-1] == "True":
-##            set_value(name="moon2_check", value=True)
-##            set_value(name="moon2_mass_field", value=import_lines[29][13:-4])
-##            set_value(name="moon2_mass_magnitude_field", value="0")
-##            set_value(name="moon2_radius_field", value=import_lines[30][15:-3])
-##            set_value(name="moon2_radius_magnitude_field", value="0")
-##            set_value(name="moon2_alt_init_field", value=import_lines[31][23:-3])
-##            set_value(name="moon2_vel_tgn_init_field", value=import_lines[32][30:-5])
-##            set_value(name="moon2_vel_rad_init_field", value=import_lines[33][26:-5])
-##            set_value(name="moon2_long_init_field", value=import_lines[34][20:-5])
-##            set_value(name="moon2_name", value=import_lines[35][13:-1])
-##            set_value(name="moon2_color_edit", value=list(import_lines[36][14:-1]))
-##        else:
-##            set_value(name="moon2_check", value=False)
-##            
-##    except:
-##        log_error("Import failed. Check file formatting.", logger="Logs")
-##        return
-##
-##    log_info("Import successful.", logger="Logs")
+def selectSave(dialog, save_path):
+    set_value("filepath_field", save_path[0] + "\\" + save_path[1])
+
+def importFile():
+    global bodies, vessels, objects
+
+    try:
+        import_filepath = get_value("filepath_field")
+        
+        if not import_filepath[-4:] == ".txt":
+            import_filepath = import_filepath + ".txt"
+            
+        log_info("Importing inputs from " + import_filepath, logger="Logs")
+        import_file = open(import_filepath, "r")
+    except:
+        log_error("Import failed. Check filepath.", logger="Logs")
+        return
+
+    try:
+        import_lines = import_file.readlines()
+        if not import_lines[0][18:-1] == version:
+            log_warning("Save file version does not match software version. Import might fail.", logger="Logs")
+
+        for obj in objects:
+            del obj
+
+        for b in bodies:
+            del b
+
+        for v in vessels:
+            del v
+            
+        objects, bodies, vessels = [], [], []
+
+        for line in import_lines:
+            
+            if line[0] == "B":
+                line = line.split("|")
+                new_body = body()
+                new_body.set_mass(float(line[3]))
+                new_body.set_radius(float(line[4]))
+                new_body.set_alt_init(float(line[5]))
+                new_body.set_vel_tgn_init(float(line[6]))
+                new_body.set_vel_rad_init(float(line[7]))
+                new_body.set_long_init(float(line[8]))
+                new_body.set_label(str(line[1]))
+                new_body.set_color(list(line[2]))
+                orbit_init = str(line[9].strip("\n"))
+                objects.append(new_body)
+                bodies.append(new_body)
+
+                reference_found = False
+
+                for obj in bodies:
+                    if obj.get_label() == orbit_init:
+                        new_body.set_orbiting_init(obj)
+                        reference_found = True
+
+                if not orbit_init or orbit_init == "" or orbit_init == "None":
+                    reference_found = True
+
+                if not reference_found:
+                    return
+
+            if line[0] == "V":
+                line = line.split("|")
+                new_vessel = vessel()
+                new_vessel.set_alt_init(float(line[3]))
+                new_vessel.set_vel_tgn_init(float(line[4]))
+                new_vessel.set_vel_rad_init(float(line[5]))
+                new_vessel.set_long_init(float(line[6]))
+                new_vessel.set_label(str(line[1]))
+                new_vessel.set_color(list(line[2]))
+                orbit_init = str(line[7].strip("\n"))
+                objects.append(new_vessel)
+                vessels.append(new_vessel)
+
+                reference_found = False
+
+                for obj in bodies:
+                    if obj.get_label() == orbit_init:
+                        new_vessel.set_orbiting_init(obj)
+                        reference_found = True
+
+                if not orbit_init or orbit_init == "":
+                    reference_found = True
+
+                if not reference_found:
+                    return
+            
+    except:
+        log_error("Import failed. Check file formatting.", logger="Logs")
+        for obj in objects:
+            del obj
+
+        for b in bodies:
+            del b
+
+        for v in vessels:
+            del v
+            
+        objects, bodies, vessels = [], [], []
+        return
+
+    initBodies()
+    initVessels()
+    updateVisualizer()
+
+    log_info("Import successful.", logger="Logs")
 
 def exportFile():
 
@@ -616,52 +653,38 @@ def exportFile():
 
         setProgressBarOverlay("Saving inputs to TXT...")
         
-        try:
-            set_value(name="progress", value=0.50)
-            result_file = open(exportFile, "w")
-            result_file.write("Save file version " + version + "\n\n")
-            result_file.write("INPUTS\n\n")
+        #try:
+        set_value(name="progress", value=0.50)
+        result_file = open(exportFile, "w")
+        result_file.write("Save file version " + version + "\n\n")
 
-            for vessel in vessels:
-                result_file.write("VESSEL\n")
-                result_file.write("Vessel label: ")
-                result_file.write(str(vessel.get_label())+"\n")
-                result_file.write("Vessel color: ")
-                result_file.write(str(vessel.get_color())+"\n")
-                result_file.write("Initial altitude: ")
-                result_file.write(str(vessel.get_alt_init())+" m\n")
-                result_file.write("Initial tangential velocity: ")
-                result_file.write(str(vessel.get_vel_tgn_init())+" m/s\n")
-                result_file.write("Initial radial velocity: ")
-                result_file.write(str(vessel.get_vel_rad_init())+" m/s\n")
-                result_file.write("Initial longitude: ")
-                result_file.write(str(vessel.get_long_init())+" deg\n")
-                result_file.write("Initially orbiting body #: ")
-                result_file.write(str(vessel.get_orbiting_init().get_label())+"\n\n")
+        for body in bodies:
+            save_line = "B|" + str(body.get_label()) + "|" + str(body.get_color()) + "|" + str(body.get_mass()) + "|"
+            save_line += str(body.get_radius()) + "|" + str(body.get_alt_init()) + "|"
+            save_line += str(body.get_vel_tgn_init()) + "|" + str(body.get_vel_rad_init()) + "|"
+            save_line += str(body.get_long_init()) + "|"
+            if body.get_orbiting_init():
+                save_line += str(body.get_orbiting_init().get_label())
+            else:
+                save_line += "None"
+            save_line += "\n"
+            result_file.write(save_line)
 
-            for body in bodies:
-                result_file.write("BODY\n")
-                result_file.write("Body label: ")
-                result_file.write(str(body_b_data[7])+"\n")
-                result_file.write("Body color: ")
-                result_file.write(str(body_b_data[8])+"\n\n")
-                result_file.write("Body mass: ")
-                result_file.write(str(body_b_data[1])+" kg\n")
-                result_file.write("Body radius: ")
-                result_file.write(str(body_b_data[2])+" m\n")
-                result_file.write("Body init. altitude: ")
-                result_file.write(str(body_b_data[3])+" m\n")
-                result_file.write("Body init. tangential vel.: ")
-                result_file.write(str(body_b_data[4])+" m/s\n")
-                result_file.write("Body init. radial vel.: ")
-                result_file.write(str(body_b_data[5])+" m/s\n")
-                result_file.write("Body init. long.: ")
-                result_file.write(str(body_b_data[6])+" deg\n")
+        for vessel in vessels:
+            save_line = "V|" + str(vessel.get_label()) + "|" + str(vessel.get_color()) + "|" + str(vessel.get_alt_init()) + "|"
+            save_line += str(vessel.get_vel_tgn_init()) + "|" + str(vessel.get_vel_rad_init()) + "|"
+            save_line += str(vessel.get_long_init()) + "|"
+            if vessel.get_orbiting_init():
+                save_line += str(vessel.get_orbiting_init().get_label())
+            else:
+                save_line += "None"
+            save_line += "\n"
+            result_file.write(save_line)
             
-            result_file.close()
-            log_info("Inputs saved in " + exportFile, logger = "Logs")
-        except:
-            log_error("TXT export failed.", logger = "Logs")  
+        result_file.close()
+        log_info("Inputs saved in " + exportFile, logger = "Logs")
+        #except:
+           # log_error("TXT export failed.", logger = "Logs")  
         
     else:
         log_warning("No filename provided. Export aborted.", logger = "Logs")
@@ -676,7 +699,7 @@ def exportFile():
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def lockView(sender, data):
-    set_value(name="view_target", value=str(sender))
+    set_value(name="view_target", value=str(data))
 
 def prevTarget():
     
@@ -1014,9 +1037,11 @@ def setScaleLimits():
 #FILE OPERATIONS BAR
 with window("File I/O", width=1260, height=60, no_close=True, no_move=True):
     set_window_pos("File I/O", 10, 10)
-    add_input_text(name="filepath_field", label="Filepath", tip = "If the file is in the same directory with the script, you don't need\nto write the full path.")
+    add_button("Browse", callback = browseSaves)
     add_same_line()
-    add_button("Import", callback=importFile, enabled=False, tip="Not implemented in this version.")
+    add_input_text(name="filepath_field", label="Filepath", tip = "If the file is in the same directory with the script, you don't need\nto write the full path.", width=600)
+    add_same_line()
+    add_button("Import", callback=importFile)
     add_same_line()
     add_button("Export", callback=exportFile)
     add_same_line()
@@ -1121,10 +1146,10 @@ with window("Output", width=700, height=560, no_close=True):
 
     add_tab_bar(name="graph_switch")
     end("graph_switch")
-    add_tab(name="graphs_tab", label="Graphs", parent="graph_switch")
-    end("graphs_tab")
     add_tab(name="vis_tab", label="Visualization", parent="graph_switch")
     end("vis_tab")
+    add_tab(name="graphs_tab", label="Graphs", parent="graph_switch")
+    end("graphs_tab")
 
     # VISUALIZER
 
