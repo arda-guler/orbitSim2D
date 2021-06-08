@@ -14,6 +14,7 @@ set_main_window_title("Three Body System Generator")
 set_theme("Dark")
 
 grav_const = scp_const.G
+bodies = []
 
 set_value(name="progress", value=0)
 
@@ -36,7 +37,40 @@ def generateRandomXY(max_val):
 
     return [x, y]
 
+def updateVisualizer():
+
+    global bodies
+
+    def calc_CoM():
+        global bodies
+        CoM_x = (bodies[0].get_mass() * bodies[0].get_pos()[0] + bodies[1].get_mass() * bodies[1].get_pos()[0] + bodies[2].get_mass() * bodies[2].get_pos()[0]) / (bodies[0].get_mass() + bodies[1].get_mass() + bodies[2].get_mass())
+        CoM_y = (bodies[0].get_mass() * bodies[0].get_pos()[1] + bodies[1].get_mass() * bodies[1].get_pos()[1] + bodies[2].get_mass() * bodies[2].get_pos()[1]) / (bodies[0].get_mass() + bodies[1].get_mass() + bodies[2].get_mass())
+
+        return [CoM_x, CoM_y]
+
+    vis_scale = float(get_value("vis_scale_field"))
+    clear_drawing("vis_canvas")
+
+    if not get_value("lock_on_CoM"):
+        for body in bodies:
+            draw_circle(drawing="vis_canvas", center=space2screen(body.get_pos()[0]/vis_scale,body.get_pos()[1]/vis_scale,680,420), radius=(body.get_radius()/vis_scale), color=body.get_color())
+            if get_value("display_labels"):
+                draw_text(drawing="vis_canvas", pos=space2screen(body.get_pos()[0]/vis_scale+3,body.get_pos()[1]/vis_scale+3,680,420), size=14, text=body.get_label(), color=body.get_color())
+        if get_value("display_CoM"):
+            draw_line(drawing="vis_canvas", p1=space2screen(calc_CoM()[0]/vis_scale-3, calc_CoM()[1]/vis_scale,680,420), p2=space2screen(calc_CoM()[0]/vis_scale+3, calc_CoM()[1]/vis_scale,680,420), color=[255, 255, 255, 128], thickness=1)
+            draw_line(drawing="vis_canvas", p1=space2screen(calc_CoM()[0]/vis_scale, calc_CoM()[1]/vis_scale-3,680,420), p2=space2screen(calc_CoM()[0]/vis_scale, calc_CoM()[1]/vis_scale+3,680,420), color=[255, 255, 255, 128], thickness=1)
+    else:
+        if get_value("display_CoM"):
+            draw_line(drawing="vis_canvas", p1=space2screen(-3, 0,680,420), p2=space2screen(3, 0,680,420), color=[255, 255, 255, 128], thickness=1)
+            draw_line(drawing="vis_canvas", p1=space2screen(0, -3,680,420), p2=space2screen(0, +3,680,420), color=[255, 255, 255, 128], thickness=1)
+        for body in bodies:
+            draw_circle(drawing="vis_canvas", center=space2screen((body.get_pos()[0]-calc_CoM()[0])/vis_scale,(body.get_pos()[1]-calc_CoM()[1])/vis_scale,680,420), radius=(body.get_radius()/vis_scale), color=body.get_color())
+            if get_value("display_labels"):
+                draw_text(drawing="vis_canvas", pos=space2screen((body.get_pos()[0]-calc_CoM()[0])/vis_scale+3,(body.get_pos()[1]-calc_CoM()[1])/vis_scale+3,680,420), size=14, text=body.get_label(), color=body.get_color())
+        
 def simulateOrbit():
+
+    global bodies
 
     class body:
 
@@ -164,14 +198,12 @@ def simulateOrbit():
     def get_dist(obj1, obj2):
         dist = ((obj1.get_pos()[0] - obj2.get_pos()[0])**2 + (obj1.get_pos()[1] - obj2.get_pos()[1])**2)**(0.5)
         return float(dist)
-         
-
+    
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #                   RUN SIMULATION
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     #set initial values
-
     time = 0
     bodies = [body_a, body_b, body_c]
 
@@ -203,18 +235,7 @@ def simulateOrbit():
             
         setSimSpeedLimits()
         setScaleLimits()
-
-        # --- update visualizer ---
-
-        vis_scale = float(get_value("vis_scale_field"))
-        clear_drawing("vis_canvas")
-
-        for body in bodies:
-             draw_circle(drawing="vis_canvas", center=space2screen(body.get_pos()[0]/vis_scale,body.get_pos()[1]/vis_scale,680,380), radius=(body.get_radius()/vis_scale), color=body.get_color())
-             if get_value("display_labels"):
-                draw_text(drawing="vis_canvas", pos=space2screen(body.get_pos()[0]/vis_scale+3,body.get_pos()[1]/vis_scale+3,680,380), size=14, text=body.get_label(), color=body.get_color())
-
-        # --- --- --- --- --- ---
+        updateVisualizer()
 
         for obj in bodies:
             obj.update_traj()
@@ -286,6 +307,9 @@ def setScaleLimits():
 with window("Input", width=550, height=630, no_close=True):   
     set_window_pos("Input", 10, 10)
 
+    add_text("Star Generation Settings")
+    add_spacing(count=4)
+
     add_input_text(name="max_pos_input", label= "Max. Position (ly)", default_value = "0.05")
     add_input_text(name="max_vel_input", label= "Max. Velocity (km/s)", default_value = "3")
     add_input_text(name="min_mass_input", label= "Min. Mass (solar mass)", default_value = "0.7")
@@ -294,6 +318,9 @@ with window("Input", width=550, height=630, no_close=True):
     add_spacing(count=6)
     add_separator()
     add_spacing(count=6)
+
+    add_text("Simulation Settings")
+    add_spacing(count=4)
 
     add_input_text(name="sim_speed_min_field", label= "Min. Sim. Speed", default_value = "10e+7", width=100, callback=setSimSpeedLimits)
     add_same_line()
@@ -332,12 +359,17 @@ with window("Output", width=700, height=630, no_close=True):
     add_input_text(name="scale_max_field", label="Scale Max", parent="vis_tab", default_value="10e+13", width=100, callback=setScaleLimits)
     add_same_line(parent="vis_tab")
     add_checkbox(name="display_labels", label="Show Labels", parent="vis_tab")
+    add_same_line(parent="vis_tab")
+    add_checkbox(name="display_CoM", label="Show CoM", parent="vis_tab")
     
     add_slider_float(name="vis_scale_field", label="Scale (m/pixel)",
                      min_value=float(get_value("scale_min_field")), max_value=float(get_value("scale_max_field")), default_value=5000000000000.0,
-                     clamped=True, parent="vis_tab", width=300)
+                     clamped=True, parent="vis_tab", width=282)
 
-    add_drawing("vis_canvas", parent="vis_tab", width=680, height=380)
+    add_same_line(parent="vis_tab")
+    add_checkbox(name="lock_on_CoM", label="Lock View on CoM", parent="vis_tab")
+
+    add_drawing("vis_canvas", parent="vis_tab", width=680, height=420)
     clear_drawing("vis_canvas")
 
     add_input_float(name="body_a_mass", label="Body A Mass", source="a_mass", enabled=False, width=100, parent="vis_tab")
